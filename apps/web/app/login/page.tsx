@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Card } from "@/components/ui/Card";
 import {
   GoogleIcon,
@@ -18,11 +19,11 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm p-8 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/15 text-xl font-semibold text-accent">
-          MP
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/15 p-2">
+          <Image src="/logo-mark.png" alt="" width={56} height={56} className="h-full w-full object-contain" />
         </div>
 
-        <h1 className="mt-5 text-xl font-semibold text-white">Multi Purpose</h1>
+        <h1 className="mt-5 text-xl font-semibold text-white">Sovereign</h1>
         <p className="mt-2 text-sm text-slate-400">
           Your expenses, notes, progress, and portfolio — one account, one place.
         </p>

@@ -1,4 +1,4 @@
-# Approach Document — Multi-Purpose Modular Platform
+# Approach Document — Sovereign (Multi-Purpose Modular Platform)
 
 ## 1. Goals
 

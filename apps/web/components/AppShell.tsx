@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Image from "next/image";
 import { Sidebar } from "./ui/Sidebar";
 import { MenuIcon } from "./ui/icons";
 
@@ -29,7 +30,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <MenuIcon width={22} height={22} />
         </button>
-        <span className="text-base font-semibold text-white">Multi Purpose</span>
+        <Image src="/logo-mark.png" alt="" width={24} height={24} className="h-6 w-6" />
+        <span className="text-base font-semibold text-white">Sovereign</span>
       </header>
 
       {open && (

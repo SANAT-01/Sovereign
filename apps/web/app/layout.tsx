@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Multi Purpose",
+  title: "Sovereign",
   description: "Personal expense tracker, notes, progress tracker, and portfolio.",
 };
 
