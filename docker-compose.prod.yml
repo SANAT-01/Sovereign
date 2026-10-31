@@ -83,7 +83,7 @@ services:
       - api
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mp-web.rule=Host(`multi-purpose.sanattudu.tech`)"
+      - "traefik.http.routers.mp-web.rule=Host(`sovereign.sanattudu.tech`)"
       - "traefik.http.routers.mp-web.entrypoints=websecure"
       - "traefik.http.routers.mp-web.tls=true"
       - "traefik.http.routers.mp-web.tls.certresolver=letsencrypt"
