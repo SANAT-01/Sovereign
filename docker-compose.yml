@@ -25,6 +25,39 @@ services:
     depends_on:
       - db
 
+  minio:
+    # MinIO rebranded to AIStor — the image moved to the minio/aistor/*
+    # path on quay.io. Pinned to a specific release (not :latest, which
+    # 401s without a login) since that's what pulled successfully.
+    image: quay.io/minio/aistor/minio:RELEASE.2026-09-19T17-05-25Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: app
+      MINIO_ROOT_PASSWORD: apppassword
+      # Free-tier license, read from the git-ignored root .env file —
+      # never commit this value or paste it into chat/code directly.
+      MINIO_LICENSE: ${MINIO_LICENSE}
+    ports:
+      - "127.0.0.1:9000:9000" # S3 API + public object URLs (local dev)
+      - "127.0.0.1:9001:9001" # Web console
+    volumes:
+      - minio-data:/data
+
+  # One-shot: creates the bucket and sets it public-read, then exits.
+  # Idempotent — safe to run on every `docker compose up`.
+  minio-init:
+    image: quay.io/minio/aistor/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 app apppassword; do sleep 1; done;
+      mc mb --ignore-existing local/multi-purpose-uploads;
+      mc anonymous set download local/multi-purpose-uploads;
+      "
+
 volumes:
   db-data:
   pgadmin-data:
+  minio-data:

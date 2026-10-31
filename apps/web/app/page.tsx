@@ -49,9 +49,29 @@ export default async function DashboardPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto max-w-5xl px-8 py-10">
-        <p className="text-sm text-slate-400">Good to see you</p>
-        <h1 className="text-2xl font-semibold text-white">{user.name || user.email}</h1>
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+        <div className="flex items-center gap-4">
+          {user.avatarUrls ? (
+            // eslint-disable-next-line @next/next/no-img-element -- external MinIO URL, not a static asset next/image can optimize
+            <img
+              // "small" (96px source) for a 48px display slot — a little
+              // headroom for retina displays without serving "large".
+              src={user.avatarUrls.small}
+              alt=""
+              width={48}
+              height={48}
+              className="h-12 w-12 shrink-0 rounded-full border border-white/10 object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent">
+              {(user.displayName || user.email).charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <p className="text-sm text-slate-400">Good to see you</p>
+            <h1 className="text-2xl font-semibold text-white">{user.displayName || user.email}</h1>
+          </div>
+        </div>
 
         {/* Bento grid: a wide hero/summary card alongside the module tiles,
             varying sizes per visual-style.md rather than a uniform list. */}

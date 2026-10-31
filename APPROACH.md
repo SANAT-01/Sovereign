@@ -123,7 +123,18 @@ This keeps the frontend swappable/lightweight (easier to redesign, easier to eve
 - A shared `users` table (keyed by Google `sub`/email) that every module's tables reference via `user_id` foreign key — this is what makes per-user data isolation and "multi-user from day one" work.
 - Per-module migration files, run in sequence by a single migration tool (e.g. `node-pg-migrate` or Drizzle) — avoids tangled, undocumented schema drift.
 
-## 8. Special Case: Portfolio Module
+## 8. File Storage (Object Store)
+
+**Decision: self-hosted MinIO** (S3-compatible object storage, run in Docker alongside Postgres), not a managed storage service. Consistent with §3's "no managed backend" stance — file storage is infrastructure the project owns, same as the database.
+
+- **Why MinIO over local disk**: local disk storage (just writing files into a folder Express serves) works but doesn't give real bucket semantics (per-object public/private policy, a stable URL scheme, straightforward backup/replication later) and ties uploaded files to one server's filesystem — harder to move or scale later. MinIO gives S3-compatible semantics now, for free, self-hosted.
+- **Why not a managed service** (S3, Cloudinary, etc.): same reasoning as §3 — this project is built and run from scratch, not assembled from managed pieces, and MinIO's free/self-hosted at this scale costs nothing extra to run alongside the existing Postgres container.
+- **Bucket layout**: one bucket (e.g. `multi-purpose-uploads`), objects namespaced by purpose and user id (e.g. `avatars/<user_id>.jpg`) — same per-user-isolation spirit as the Postgres tables in §7, just for files instead of rows.
+- **Public vs. private objects**: profile avatars are set public-read at the bucket/prefix level (they're meant to be displayed, e.g. in the sidebar) — this is a deliberate exception to "nothing public but the frontend" in §6, scoped to object storage, not every service. Future modules needing private file storage (e.g. a notes attachment) would use presigned URLs instead of a public policy — decide that per use case when it comes up, don't default to public.
+- **Access pattern**: Express is the only thing that talks to MinIO directly (internal Docker network, like Postgres) — it handles the upload (via `multer` for multipart parsing) and returns a public object URL to the frontend. The frontend never talks to MinIO directly; this keeps the storage layer behind the same module-boundary discipline as everything else (§5's `service.ts`/`repository.ts` pattern, with a `storage.ts` lib wrapping the MinIO client).
+- **Local dev vs. production**: MinIO's public object URL needs its own exposed port/subdomain to actually be loadable by a browser (unlike Postgres, which only Express talks to) — locally this is `http://localhost:9000/<bucket>/...`; in production this needs either a Traefik route to MinIO's own subdomain (e.g. `files.sanattudu.tech`) or having Express proxy/redirect to it. Decide the production exposure when actually deploying — not a blocker for local development now.
+
+## 9. Special Case: Portfolio Module
 
 Unlike the other modules, the portfolio is **public-facing** (visitors, not just you) and likely doesn't need the full auth/data-isolation machinery. Treat it as a module that:
 - Doesn't require login to view.
@@ -132,14 +143,14 @@ Unlike the other modules, the portfolio is **public-facing** (visitors, not just
 
 Don't force it into the same pattern as data-heavy modules just for consistency — match the module's actual needs.
 
-## 9. Explicitly Out of Scope (for now)
+## 10. Explicitly Out of Scope (for now)
 
 - Supabase or other managed backend — decided against, see §3.
 - Separate apps per module on separate domains — decided against, see §2 (revisit only after 2-3 validated modules).
 - Payment integration — design will reuse the same module pattern (own `payments` module with webhook handler) when actually needed; not built until there's something to charge for.
 - NestJS — considered, Express chosen for learning; structure in §5 recovers most of the organizational benefit by hand.
 
-## 10. Build Order
+## 11. Build Order
 
 1. Shared foundation: Postgres connection, `users` table, Google OAuth flow + session middleware, base Express app wiring, base Next.js app shell with login.
 2. Expense Tracker module (backend + frontend), used daily.
@@ -148,29 +159,29 @@ Don't force it into the same pattern as data-heavy modules just for consistency 
 5. Portfolio module (lower priority, public-facing, can be built opportunistically).
 6. Any further modules, one at a time, same rule as step 4.
 
-## 11. Tooling & Validation per Layer
+## 12. Tooling & Validation per Layer
 
 | Area | Tooling | Notes |
 |---|---|---|
 | **Frontend** | Next.js, TypeScript, Tailwind, React Query or SWR for CSR data fetching | Stays presentation-only per §6 — no business logic here. |
 | **Backend** | Express, TypeScript, Zod (request validation in `routes.ts`) | Business logic in `service.ts`, per §5. |
-| **Data Modeling** | PostgreSQL, Drizzle (or node-pg-migrate) for versioned migrations | One ERD per module, reviewed before writing migration files (§12 — document before implementing). Shared `users` table pattern per §7. |
+| **Data Modeling** | PostgreSQL, Drizzle (or node-pg-migrate) for versioned migrations | One ERD per module, reviewed before writing migration files (§15 — document before implementing). Shared `users` table pattern per §7. |
 | **OAuth** | Passport.js (`passport-google-oauth20`) or Auth.js, server-side session (signed cookie, not JWT-in-localStorage) | Session validated by `auth/middleware.ts`, reused by every module's routes (§5). |
 | **Testing** | Vitest/Jest for `service.ts` unit tests (no HTTP needed — this is exactly why services are plain functions, §5); Supertest for `routes.ts` integration tests; Playwright for end-to-end flows through the UI | Unit tests are cheapest and should cover most business-rule cases; e2e reserved for the critical path per module (e.g. "create expense end to end"). |
 | **UI** | Tailwind + a small shared component set (buttons, forms, layout) reused across modules, not rebuilt per module | Keeps new modules fast to build and visually consistent without a heavy design system. |
 
-## 12. Feature Validation Workflow
+## 13. Feature Validation Workflow
 
 **Rule: every module/feature gets validated on completion before being considered "done" — not just written and moved past.**
 
 On completion of a feature or module, run:
-1. **Automated tests** — the relevant `service.ts` unit tests and `routes.ts` integration tests (§11) must pass.
+1. **Automated tests** — the relevant `service.ts` unit tests and `routes.ts` integration tests (§12) must pass.
 2. **A review pass** — use the `/code-review` skill (medium effort is enough for routine feature work; reserve higher effort for auth, payments, or anything security-sensitive) against the diff, to catch correctness bugs before they're considered shipped.
 3. **A real run-through** — use the `/run` skill (or manually) to actually exercise the feature in the browser end-to-end, not just trust passing tests. SSR and CSR paths (§6) should both be checked where a feature touches both.
 
-Only after all three pass does a module move to "used daily" status, which is the gate for starting the next module (§10's sequencing rule).
+Only after all three pass does a module move to "used daily" status, which is the gate for starting the next module (§11's sequencing rule).
 
-## 13. Revisit Triggers
+## 14. Revisit Triggers
 
 Decisions above aren't permanent. Specific signals that should trigger re-evaluating a decision made here:
 
@@ -181,8 +192,8 @@ Decisions above aren't permanent. Specific signals that should trigger re-evalua
 
 Don't pre-solve these — build until one of these triggers actually fires.
 
-## 14. Working Agreement
+## 15. Working Agreement
 
 - **Document before implementing.** Any architecture-affecting decision (new module, infra choice, exposure/routing change, data model change) gets written into this document *before* code is written, not after. This file is kept current — amended in place, not left stale — as the single source of truth for why things are built the way they are.
 - Code changes that follow from a decision already documented here don't need a round-trip back to this file first — only genuinely new decisions do.
-- **Every feature is validated on completion**, per §12 — tests, review, and a real run-through — before being marked done.
+- **Every feature is validated on completion**, per §13 — tests, review, and a real run-through — before being marked done.

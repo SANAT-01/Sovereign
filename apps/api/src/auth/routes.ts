@@ -25,7 +25,14 @@ router.get('/auth/me', (req, res) => {
     return res.json({ user: null });
   }
   const user = req.user as User;
-  res.json({ user: { id: user.id, email: user.email, displayName: user.display_name } });
+  res.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      avatarUrls: user.avatar_urls,
+    },
+  });
 });
 
 router.post('/auth/logout', (req, res, next) => {

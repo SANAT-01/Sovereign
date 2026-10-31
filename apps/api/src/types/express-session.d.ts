@@ -7,6 +7,12 @@ declare global {
       google_sub: string;
       email: string;
       display_name: string | null;
+      avatar_urls: {
+        thumbnail: string;
+        small: string;
+        medium: string;
+        large: string;
+      } | null;
       created_at: Date;
     }
   }

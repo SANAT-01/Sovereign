@@ -2,11 +2,21 @@ import { cookies } from "next/headers";
 
 const API_URL = process.env.API_URL || "http://localhost:4000";
 
+export interface AvatarUrls {
+  thumbnail: string;
+  small: string;
+  medium: string;
+  large: string;
+}
+
 export interface SessionUser {
   id: string;
   email: string;
-  name?: string;
-  picture?: string;
+  displayName: string | null;
+  // Variant map, not one URL — callers pick the size matching where it's
+  // displayed (sidebar thumbnail vs. profile page preview vs. a future
+  // larger view), per the profile service's upload-time resizing.
+  avatarUrls: AvatarUrls | null;
 }
 
 /**
