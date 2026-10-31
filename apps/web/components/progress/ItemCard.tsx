@@ -174,11 +174,19 @@ export function ItemCard({
 
   if (item.type === "daily") {
     return (
-      <Card variant="glass" className="p-4">
+      <Card
+        variant="glass"
+        className={`p-4 ${!item.doneToday ? "ring-1 ring-amber-400/40 border-amber-400/30" : ""}`}
+      >
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="truncate text-sm font-medium text-white">{item.title}</p>
+              {!item.doneToday && (
+                <span className="shrink-0 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+                  Not done today
+                </span>
+              )}
               {editButton}
               {deleteButton}
             </div>

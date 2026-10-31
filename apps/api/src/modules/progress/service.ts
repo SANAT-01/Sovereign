@@ -282,7 +282,10 @@ export async function getDashboard(userId: string) {
   const dailyWithStreaks = await Promise.all(
     dailyItems.map(async (item) => ({ ...item, ...(await computeStreak(userId, item.id)) })),
   );
-  const dailyAtRisk = dailyWithStreaks.filter((h) => !h.doneToday && h.streak > 0);
+  // Every not-done-today daily item, not just ones with an active streak —
+  // a brand-new habit you haven't logged yet still needs attention today,
+  // matching ItemCard.tsx's "Not done today" highlight (not streak-gated).
+  const dailyAtRisk = dailyWithStreaks.filter((h) => !h.doneToday);
 
   const studyPlans = items.filter((i) => i.type === 'study_plan' && i.status === 'active');
   const staleStudyTopics = studyPlans.flatMap((plan) =>

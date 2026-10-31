@@ -47,7 +47,10 @@ export default async function ProgressPage() {
           ) : (
             <ul className="space-y-1.5 text-sm text-slate-200">
               {dashboard.dailyAtRisk.map((h) => (
-                <li key={h.id}>⚠️ &quot;{h.title}&quot; streak ({h.streak} days) is at risk today</li>
+                <li key={h.id}>
+                  ⚠️ &quot;{h.title}&quot; not done today
+                  {h.streak && h.streak > 0 ? ` — ${h.streak} day streak at risk` : ""}
+                </li>
               ))}
               {dashboard.staleStudyTopics.map((t) => (
                 <li key={t.id}>
