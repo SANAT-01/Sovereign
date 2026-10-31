@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { requireAuth } from '../../auth/middleware';
-import * as service from './service';
+import { requireAuth } from '../../auth/middleware.js';
+import * as service from './service.js';
 
 const router = Router();
 

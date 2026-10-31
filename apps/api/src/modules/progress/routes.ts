@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requireAuth } from '../../auth/middleware';
-import type { User } from '../users/repository';
-import * as service from './service';
+import { requireAuth } from '../../auth/middleware.js';
+import type { User } from '../users/repository.js';
+import * as service from './service.js';
 
 const router = Router();
 router.use(requireAuth);

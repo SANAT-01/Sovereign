@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pool } from './client';
+import { pool } from './client.js';
 
 // Standalone migration runner — invoke with `npm run migrate -w apps/api`.
 // Applies each module's schema.sql. Order matters only for FK dependencies:

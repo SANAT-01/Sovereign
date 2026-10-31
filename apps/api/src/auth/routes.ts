@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import passport from './google';
-import type { User } from '../modules/users/repository';
+import passport from './google.js';
+import type { User } from '../modules/users/repository.js';
 
 const router = Router();
 

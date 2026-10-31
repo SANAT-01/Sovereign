@@ -1,6 +1,6 @@
-import { ValidationError, NotFoundError } from '../../errors';
-import * as repository from './repository';
-import type { ProgressItem, ItemType } from './repository';
+import { ValidationError, NotFoundError } from '../../errors.js';
+import * as repository from './repository.js';
+import type { ProgressItem, ItemType } from './repository.js';
 
 const STALE_DAYS = 7; // generic item-level staleness (interview/other); daily uses its own at-risk signal
 const DUE_SOON_DAYS = 3;

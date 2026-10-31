@@ -2,6 +2,10 @@
 const API_URL = process.env.API_URL || "http://localhost:4000";
 
 const nextConfig = {
+  // Standalone output: production Dockerfile copies only this self-contained
+  // server bundle (its own minimal node_modules included) into the runtime
+  // stage instead of the full repo + node_modules.
+  output: "standalone",
   async rewrites() {
     return [
       // CSR proxy per APPROACH.md §6: browser-side calls to same-origin

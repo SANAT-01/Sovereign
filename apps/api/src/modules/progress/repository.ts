@@ -1,4 +1,4 @@
-import { db } from '../../db/client';
+import { db } from '../../db/client.js';
 
 export type ItemType = 'daily' | 'study_plan' | 'interview' | 'other';
 export type ItemStatus = 'active' | 'done' | 'cancelled';

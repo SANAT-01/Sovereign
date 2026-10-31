@@ -1,8 +1,8 @@
 import sharp from 'sharp';
-import { ValidationError } from '../../errors';
-import { uploadPublicFile } from '../../lib/storage';
-import * as usersRepository from '../users/repository';
-import type { User, AvatarUrls } from '../users/repository';
+import { ValidationError } from '../../errors.js';
+import { uploadPublicFile } from '../../lib/storage.js';
+import * as usersRepository from '../users/repository.js';
+import type { User, AvatarUrls } from '../users/repository.js';
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB — cap on the original upload.
@@ -66,6 +66,6 @@ export async function uploadAvatar(
     ),
   );
 
-  const avatarUrls = Object.fromEntries(variantEntries) as AvatarUrls;
+  const avatarUrls = Object.fromEntries(variantEntries) as unknown as AvatarUrls;
   return usersRepository.updateAvatarUrls(userId, avatarUrls);
 }

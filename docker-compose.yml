@@ -57,6 +57,45 @@ services:
       mc anonymous set download local/multi-purpose-uploads;
       "
 
+  api:
+    build: ./apps/api
+    restart: unless-stopped
+    env_file:
+      - ./apps/api/.env
+    environment:
+      # Override the .env file's host-dev values with container-network
+      # hostnames — everything else (SESSION_SECRET, GOOGLE_CLIENT_ID/SECRET)
+      # still comes from the env_file above. FRONTEND_URL and
+      # MINIO_PUBLIC_URL stay as localhost: both are URLs the *browser*
+      # follows (OAuth redirect, avatar image src), not container-to-container
+      # calls, so they must stay on the published host port.
+      DATABASE_URL: postgres://app:app@db:5432/multi_purpose
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      - db
+      - minio
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        # Baked at build time — next.config.js's rewrites() (CSR proxy) is
+        # resolved into .next/routes-manifest.json during `next build`, not
+        # read fresh at container start.
+        API_URL: http://api:4000
+    restart: unless-stopped
+    environment:
+      # Read at runtime for SSR direct calls (APPROACH.md §6), which go
+      # container-to-container, not through localhost.
+      API_URL: http://api:4000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - api
+
 volumes:
   db-data:
   pgadmin-data:

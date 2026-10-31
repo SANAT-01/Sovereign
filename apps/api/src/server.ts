@@ -1,15 +1,15 @@
 import express from 'express';
 import session from 'express-session';
 import pgSessionFactory from 'connect-pg-simple';
-import passport from './auth/google';
-import authRoutes from './auth/routes';
-import expensesRoutes from './modules/expenses/routes';
-import notesRoutes from './modules/notes/routes';
-import progressRoutes from './modules/progress/routes';
-import portfolioRoutes from './modules/portfolio/routes';
-import profileRoutes from './modules/profile/routes';
-import { errorHandler } from './middleware/errorHandler';
-import { pool } from './db/client';
+import passport from './auth/google.js';
+import authRoutes from './auth/routes.js';
+import expensesRoutes from './modules/expenses/routes.js';
+import notesRoutes from './modules/notes/routes.js';
+import progressRoutes from './modules/progress/routes.js';
+import portfolioRoutes from './modules/portfolio/routes.js';
+import profileRoutes from './modules/profile/routes.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { pool } from './db/client.js';
 
 export function createServer() {
   const app = express();
