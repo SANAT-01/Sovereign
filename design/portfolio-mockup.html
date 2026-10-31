@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Portfolio — design mockup</title>
+<style>
+  :root {
+    --surface: #0b1210;
+    --card: #0d3b36;
+    --accent: #2dd4a0;
+    --accent-dim: #1f9c78;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-faint: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at 20% -10%, rgba(45,212,160,0.12), transparent 45%),
+                radial-gradient(circle at 90% 10%, rgba(45,212,160,0.07), transparent 40%),
+                var(--surface);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    padding: 2rem 1.25rem 4rem;
+  }
+  .page { max-width: 760px; margin: 0 auto; }
+
+  .eyebrow { font-size: 0.8rem; color: var(--text-dim); margin: 0; }
+  h1 { font-size: 1.6rem; font-weight: 600; margin: 0.25rem 0 0; color: #fff; }
+  .sub { font-size: 0.9rem; color: var(--text-dim); margin: 0.5rem 0 0; max-width: 46ch; line-height: 1.5; }
+
+  .copy-all {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    margin-top: 1.25rem; padding: 0.65rem 1.1rem;
+    background: var(--accent); color: #06231c; font-weight: 600; font-size: 0.85rem;
+    border: none; border-radius: 999px; cursor: pointer;
+    box-shadow: 0 8px 24px -8px rgba(45,212,160,0.5);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .copy-all:hover { transform: translateY(-1px); box-shadow: 0 10px 28px -8px rgba(45,212,160,0.6); }
+  .copy-all svg { width: 16px; height: 16px; }
+
+  .header-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 1.25rem; flex-wrap: wrap; }
+
+  .mode-toggle {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.65rem 1rem;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 999px;
+    color: var(--text-dim); font-size: 0.82rem; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .mode-toggle svg { width: 15px; height: 15px; }
+  .mode-toggle:hover { color: #fff; }
+  body.edit-mode .mode-toggle {
+    background: rgba(45,212,160,0.15); color: var(--accent); border-color: rgba(45,212,160,0.3);
+  }
+
+  /* Edit-mode-only affordances — hidden in read mode so the page stays
+     a clean, fast copy surface rather than a management UI by default. */
+  .edit-only { display: none; }
+  body.edit-mode .edit-only { display: flex; }
+  body.edit-mode .edit-only.block { display: block; }
+
+  .section-title-row { display: flex; align-items: center; gap: 0.4rem; }
+  .section-edit-btn {
+    background: none; border: none; cursor: pointer; padding: 0.2rem;
+    color: var(--text-faint); display: flex; border-radius: 0.4rem;
+    transition: color 0.15s ease;
+  }
+  .section-edit-btn:hover { color: var(--accent); }
+  .section-edit-btn.danger:hover { color: #f87171; }
+  .section-edit-btn svg { width: 13px; height: 13px; }
+
+  .icon-btn.danger { color: #f87171; }
+  .icon-btn.danger:hover { background: rgba(248,113,113,0.15); color: #f87171; }
+
+  body.edit-mode .item-row { background: rgba(255,255,255,0.015); }
+  body.edit-mode .card-list { border-color: rgba(45,212,160,0.15); }
+
+  .section { margin-top: 2.25rem; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .section-title { font-size: 0.85rem; font-weight: 600; color: var(--accent); margin: 0; text-transform: uppercase; letter-spacing: 0.04em; }
+  .section-hint { font-size: 0.75rem; color: var(--text-faint); margin: 0; }
+
+  .card-list {
+    background: rgba(13,59,54,0.45);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 1.5rem;
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+  }
+  .item-row {
+    display: flex; align-items: center; gap: 0.85rem;
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .item-row:last-child { border-bottom: none; }
+
+  .item-icon {
+    flex-shrink: 0; width: 38px; height: 38px; border-radius: 0.85rem;
+    background: rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent);
+  }
+  .item-icon svg { width: 19px; height: 19px; }
+
+  .item-body { flex: 1; min-width: 0; }
+  .item-label { font-size: 0.85rem; font-weight: 500; color: #fff; margin: 0; }
+  .item-value {
+    font-size: 0.78rem; color: var(--text-dim); margin: 0.1rem 0 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .item-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+
+  .pin-btn {
+    background: none; border: none; cursor: pointer; padding: 0.4rem;
+    color: var(--text-faint); border-radius: 0.6rem; display: flex;
+    transition: color 0.15s ease;
+  }
+  .pin-btn:hover { color: var(--text-dim); }
+  .pin-btn.pinned { color: #fbbf24; }
+  .pin-btn svg { width: 16px; height: 16px; }
+
+  .icon-btn {
+    display: flex; align-items: center; gap: 0.3rem;
+    padding: 0.45rem 0.7rem;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 999px;
+    color: var(--text-dim);
+    font-size: 0.72rem; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+  .icon-btn svg { width: 14px; height: 14px; }
+  .icon-btn.copied { background: rgba(45,212,160,0.18); color: var(--accent); }
+  .icon-btn.primary {
+    background: rgba(45,212,160,0.12); color: var(--accent); border-color: rgba(45,212,160,0.25);
+  }
+  .icon-btn.primary:hover { background: rgba(45,212,160,0.2); }
+
+  .add-row {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.8rem 1.1rem;
+    color: var(--text-faint); font-size: 0.8rem;
+    cursor: pointer; border-top: 1px dashed rgba(255,255,255,0.08);
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .add-row:hover { color: var(--accent); background: rgba(255,255,255,0.03); }
+  .add-row svg { width: 15px; height: 15px; }
+
+  .add-section {
+    margin-top: 1.5rem;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    padding: 0.9rem;
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 1.25rem;
+    color: var(--text-faint); font-size: 0.82rem;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .add-section:hover { color: var(--accent); border-color: rgba(45,212,160,0.3); }
+  .add-section svg { width: 16px; height: 16px; }
+
+  .toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(10px);
+    background: #0d3b36; border: 1px solid rgba(45,212,160,0.3);
+    color: var(--accent); font-size: 0.82rem; font-weight: 500;
+    padding: 0.65rem 1.2rem; border-radius: 999px;
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .note {
+    margin-top: 2.5rem; padding: 1rem 1.2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 1rem; font-size: 0.78rem; color: var(--text-faint); line-height: 1.6;
+  }
+  .note b { color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="eyebrow">Portfolio</p>
+  <h1>Your career kit</h1>
+  <p class="sub">Every link, document, and detail you need when filling out a job application — one click to copy, instead of opening five tabs.</p>
+
+  <div class="header-actions">
+    <button class="copy-all" onclick="copyAll()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy everything as text
+    </button>
+    <button class="mode-toggle" id="modeToggle" onclick="toggleMode()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" id="modeIcon"><path d="M12 5v14M5 12h14"/></svg>
+      <span id="modeLabel">Edit layout</span>
+    </button>
+  </div>
+
+  <!-- PROFILES -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title-row">
+        <p class="section-title">Profiles</p>
+        <button class="section-edit-btn edit-only" title="Rename section" onclick="alert('Rename \'Profiles\' section.')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+        <button class="section-edit-btn danger edit-only" title="Delete section" onclick="alert('Delete \'Profiles\' section (with confirm).')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+        </button>
+      </div>
+      <p class="section-hint">pinned ones can show on your home screen</p>
+    </div>
+    <div class="card-list">
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">GitHub</p>
+          <p class="item-value">github.com/sanattudu</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="pin-btn pinned" title="Pinned">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 6.5L20 10l-6 4 1 7-5-4-5 4 1-7-6-4 6.5-1.5z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="copyItem(this, 'https://github.com/sanattudu')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+          <button class="icon-btn primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+            Open
+          </button>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">LinkedIn</p>
+          <p class="item-value">linkedin.com/in/sanattudu</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="pin-btn pinned" title="Pinned">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 6.5L20 10l-6 4 1 7-5-4-5 4 1-7-6-4 6.5-1.5z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="copyItem(this, 'https://linkedin.com/in/sanattudu')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+          <button class="icon-btn primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+            Open
+          </button>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">Portfolio website</p>
+          <p class="item-value">sanattudu.tech</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="pin-btn" title="Pin to home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l1.5 6.5L20 10l-6 4 1 7-5-4-5 4 1-7-6-4 6.5-1.5z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="copyItem(this, 'https://sanattudu.tech')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+          <button class="icon-btn primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+            Open
+          </button>
+        </div>
+      </div>
+
+      <div class="add-row edit-only" onclick="alert('Add link form goes here — any label + URL, your own category too.')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add another profile link
+      </div>
+    </div>
+  </div>
+
+  <!-- DEPLOYED APPLICATIONS -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title-row">
+        <p class="section-title">Deployed Applications</p>
+        <button class="section-edit-btn edit-only" title="Rename section" onclick="alert('Rename \'Deployed Applications\' section.')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+        <button class="section-edit-btn danger edit-only" title="Delete section" onclick="alert('Delete \'Deployed Applications\' section (with confirm).')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+        </button>
+      </div>
+      <p class="section-hint">live projects to point to in an application</p>
+    </div>
+    <div class="card-list">
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">Multi Purpose — expenses, notes, progress, portfolio</p>
+          <p class="item-value">sovereign.sanattudu.tech · Next.js · Express · Postgres</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="pin-btn pinned" title="Pinned"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 6.5L20 10l-6 4 1 7-5-4-5 4 1-7-6-4 6.5-1.5z"/></svg></button>
+          <button class="icon-btn" onclick="copyItem(this, 'https://sovereign.sanattudu.tech')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+          <button class="icon-btn primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+            Open
+          </button>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">Side project — e.g. a CLI tool, another app</p>
+          <p class="item-value">your-other-project.com · tag your stack here</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="pin-btn" title="Pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l1.5 6.5L20 10l-6 4 1 7-5-4-5 4 1-7-6-4 6.5-1.5z"/></svg></button>
+          <button class="icon-btn" onclick="copyItem(this, 'https://your-other-project.com')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+          <button class="icon-btn primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+            Open
+          </button>
+        </div>
+      </div>
+
+      <div class="add-row edit-only" onclick="alert('Add a deployed app — name, URL, and optional stack tags (used when a form asks \'link to a live project\').')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add a deployed application
+      </div>
+    </div>
+  </div>
+
+  <!-- DOCUMENTS -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title-row">
+        <p class="section-title">Documents</p>
+        <button class="section-edit-btn edit-only" title="Rename section" onclick="alert('Rename \'Documents\' section.')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+        <button class="section-edit-btn danger edit-only" title="Delete section" onclick="alert('Delete \'Documents\' section (with confirm).')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+        </button>
+      </div>
+      <p class="section-hint">stored in your own bucket, not re-uploaded each time</p>
+    </div>
+    <div class="card-list">
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">Resume — Sanat_Tudu.pdf</p>
+          <p class="item-value">Updated Oct 12 · 184 KB</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="pin-btn pinned" title="Pinned"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 6.5L20 10l-6 4 1 7-5-4-5 4 1-7-6-4 6.5-1.5z"/></svg></button>
+          <button class="icon-btn" onclick="copyItem(this, 'https://files.sanattudu.tech/resume.pdf')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy link
+          </button>
+          <button class="icon-btn primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            Download
+          </button>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">Cover letter template</p>
+          <p class="item-value">Updated Sep 28 · 32 KB</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="pin-btn" title="Pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l1.5 6.5L20 10l-6 4 1 7-5-4-5 4 1-7-6-4 6.5-1.5z"/></svg></button>
+          <button class="icon-btn" onclick="copyItem(this, 'https://files.sanattudu.tech/cover-letter.pdf')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy link
+          </button>
+          <button class="icon-btn primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            Download
+          </button>
+        </div>
+      </div>
+
+      <div class="add-row edit-only" onclick="alert('Upload a new document — same bucket pattern as your avatar uploads.')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Upload a document
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title-row">
+        <p class="section-title">Contact</p>
+        <button class="section-edit-btn edit-only" title="Rename section" onclick="alert('Rename \'Contact\' section.')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+        <button class="section-edit-btn danger edit-only" title="Delete section" onclick="alert('Delete \'Contact\' section (with confirm).')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+        </button>
+      </div>
+      <p class="section-hint">for the "tell us how to reach you" field</p>
+    </div>
+    <div class="card-list">
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M22 6 12 13 2 6"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">Email</p>
+          <p class="item-value">sanattudu.plan@gmail.com</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="icon-btn copied">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            Copied
+          </button>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 2.9a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.4c.9.4 1.9.6 2.9.7a2 2 0 0 1 1.7 2z"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">Phone</p>
+          <p class="item-value">+91 00000 00000</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="icon-btn" onclick="copyItem(this, '+910000000000')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div class="item-body">
+          <p class="item-label">Location</p>
+          <p class="item-value">India · IST (UTC+5:30)</p>
+        </div>
+        <div class="item-actions">
+          <button class="icon-btn edit-only" title="Edit" onclick="alert('Edit this item — label, value, icon.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="icon-btn danger edit-only" title="Delete" onclick="alert('Delete this item (with confirm).')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>
+          </button>
+          <button class="icon-btn" onclick="copyItem(this, 'India · IST (UTC+5:30)')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <div class="add-row edit-only" onclick="alert('Add any other field — a visa status note, availability date, salary expectation, whatever a form asks for next.')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add a field
+      </div>
+    </div>
+  </div>
+
+  <div class="add-section edit-only" onclick="alert('Full flexibility, same as Progress Tracker: name your own section — e.g. \'Visa / Work Auth\', \'References\' — not a fixed list.')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    Add a new section
+  </div>
+
+  <div class="note">
+    <b>Design notes (not part of the mockup itself):</b><br>
+    · Pinned items (⭐) are the ones most apply-forms ask for first — GitHub, LinkedIn, resume. Could optionally surface pinned items on the home screen widget, same pattern as Progress's home summary.<br>
+    · "Copy everything as text" builds one block like:<br>
+    &nbsp;&nbsp;<code>Name · email · phone · github.com/... · linkedin.com/in/... · sanattudu.tech</code><br>
+    &nbsp;&nbsp;— for forms with a single "paste your info" box, or quick pasting into an email.<br>
+    · Sections are open-ended like Progress Tracker's categories — "Profiles" / "Deployed Applications" / "Documents" / "Contact" ship as defaults, but nothing stops a "Visa Status" or "References" section.<br>
+    · Deployed apps carry an optional stack-tag line (e.g. "Next.js · Express · Postgres") — handy context when a form or recruiter asks what you built it with.<br>
+    · Documents reuse the existing MinIO bucket + upload pattern from the avatar feature, not a new storage mechanism.<br>
+    · <b>Read vs. Edit mode</b> — try the "Edit layout" toggle at the top. Read mode (default) is a clean, fast copy surface — just Copy/Open/Pin, no clutter. Edit mode reveals rename/delete on every section (✎ / 🗑 next to each title) and edit/delete on every item, plus "add a field" / "add a section" rows — full CRUD on both sections and the topics/items inside them, never locked to the 4 defaults shown here.
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+  }
+
+  function copyItem(btn, value) {
+    navigator.clipboard?.writeText(value).catch(() => {});
+    const original = btn.innerHTML;
+    btn.classList.add('copied');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Copied';
+    showToast('Copied to clipboard');
+    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = original; }, 1400);
+  }
+
+  function copyAll() {
+    const block = [
+      'Sanat Tudu',
+      'sanattudu.plan@gmail.com',
+      '+91 00000 00000',
+      'github.com/sanattudu',
+      'linkedin.com/in/sanattudu',
+      'sanattudu.tech',
+      'sovereign.sanattudu.tech (Multi Purpose app)',
+    ].join('\n');
+    navigator.clipboard?.writeText(block).catch(() => {});
+    showToast('Everything copied — ready to paste');
+  }
+
+  function toggleMode() {
+    const editing = document.body.classList.toggle('edit-mode');
+    document.getElementById('modeLabel').textContent = editing ? 'Done editing' : 'Edit layout';
+    document.getElementById('modeIcon').innerHTML = editing
+      ? '<path d="M20 6 9 17l-5-5"/>'
+      : '<path d="M12 5v14M5 12h14"/>';
+    showToast(editing ? 'Edit mode — add, rename, delete sections and items' : 'Read mode');
+  }
+</script>
+</body>
+</html>

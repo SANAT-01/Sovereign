@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "accent";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -10,6 +10,10 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary: "bg-accent text-surface hover:bg-accent-dim",
   secondary: "bg-white/10 text-slate-100 hover:bg-white/20 border border-white/10",
   ghost: "text-slate-300 hover:text-white hover:bg-white/5",
+  // Tinted pill, distinct from the neutral `secondary` — for a secondary
+  // *affirmative* action (e.g. "Open", "Download") that should read as
+  // more purposeful than a plain utility action (e.g. "Copy").
+  accent: "bg-accent/10 text-accent border border-accent/25 hover:bg-accent/20",
 };
 
 /**

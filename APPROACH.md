@@ -41,8 +41,8 @@ These goals are ranked deliberately. Architecture decisions below optimize for (
 |---|---|---|
 | Expense Tracker | First to build | Daily-use financial logging, custom categories. |
 | Notes | First to build | Daily-use free-form notes/journal. |
-| Progress Tracker | Planned | Habit/goal tracking. |
-| Portfolio | Planned | Public-facing showcase (different audience: visitors, not just you — see §8). |
+| Progress Tracker | Built | Habit/goal tracking (§10). |
+| Portfolio | Planned | Private "career kit" — copyable links/documents/contact info for job applications (§9). A public showcase page is a separate, later concern. |
 | (more over time) | — | Added one at a time, only after the current module is in real daily use. |
 
 **Sequencing rule**: build and personally use one module fully before starting the next. Breadth-before-depth is the exact failure mode this project is trying to avoid (see §1 — "multi-purpose app that's not great at anything").
@@ -134,14 +134,29 @@ This keeps the frontend swappable/lightweight (easier to redesign, easier to eve
 - **Access pattern**: Express is the only thing that talks to MinIO directly (internal Docker network, like Postgres) — it handles the upload (via `multer` for multipart parsing) and returns a public object URL to the frontend. The frontend never talks to MinIO directly; this keeps the storage layer behind the same module-boundary discipline as everything else (§5's `service.ts`/`repository.ts` pattern, with a `storage.ts` lib wrapping the MinIO client).
 - **Local dev vs. production**: MinIO's public object URL needs its own exposed port/subdomain to actually be loadable by a browser (unlike Postgres, which only Express talks to) — locally this is `http://localhost:9000/<bucket>/...`; in production this needs either a Traefik route to MinIO's own subdomain (e.g. `files.sanattudu.tech`) or having Express proxy/redirect to it. Decide the production exposure when actually deploying — not a blocker for local development now.
 
-## 9. Special Case: Portfolio Module
+## 9. Portfolio Module Design
 
-Unlike the other modules, the portfolio is **public-facing** (visitors, not just you) and likely doesn't need the full auth/data-isolation machinery. Treat it as a module that:
-- Doesn't require login to view.
-- May not need its own database tables at all (could be static/content-driven).
-- Still lives in the same Next.js app for one deployment, but routed and reasoned about differently (public routes vs. authenticated app routes).
+**Superseded design note**: this module was originally scoped as a public-facing resume/showcase page (visitors, not just you) needing no auth or tables. That's still a plausible *future* module, but it was never built, and the real near-term need turned out to be different — a **private "career kit"**: every link, document, and detail needed when filling out a job application (GitHub, LinkedIn, resume, portfolio site, phone, deployed projects), each one copyable in one click, so applying doesn't mean hunting across five open tabs. That's what's specified below. If a public showcase page gets built later, it's a separate concern (public routes, no auth) layered on top of this, not a replacement for it.
 
-Don't force it into the same pattern as data-heavy modules just for consistency — match the module's actual needs.
+**Data model** — same "generic, not one-table-per-type" philosophy as Progress Tracker (§10), and the same reason: full flexibility to add sections and items without a migration.
+
+```
+portfolio_sections (
+  id, user_id, title, position, created_at
+)
+portfolio_items (
+  id, user_id, section_id, kind, label, value, note, pinned, position, created_at
+)
+```
+
+- **No fixed section list.** "Profiles" / "Deployed Applications" / "Documents" / "Contact" are starting defaults a new account sees, not a schema constraint — rename, delete, or add any section (e.g. "Visa Status", "References") from the UI, same as Progress Tracker's user-defined categories.
+- **`kind`** is the only thing that changes an item's behavior: `'link'` (value = URL; Copy + Open), `'document'` (value = MinIO public URL from an uploaded file, via the same `uploadPublicFile` helper the avatar feature already uses — not a new storage mechanism; Copy link + Download), `'text'` (value = plain text like a phone number or location; Copy only, no Open).
+- **`note`** is a free-text secondary line — a document's size/upload date, a deployed app's stack tags, or nothing.
+- **`pinned`** marks an item as one of the first things you'd need (GitHub, LinkedIn, resume) — persisted, not yet wired into the home-screen widget (§10's `home_widgets` pattern could pick this up later if wanted, but that's not built now).
+- **Empty state is a real empty state** — a new account has zero sections, not fabricated placeholder "Profiles"/"Documents" rows (same "don't fabricate progress" principle §10 established, applied here to "don't fabricate your own links").
+- **Private, authenticated, standard data-isolation** — `requireAuth` + `user_id` on every row, same as every other real module. (This is the correction to the original "no auth" assumption above.)
+- **Read vs. Edit mode is pure client-side UI state**, not a backend concept — Edit mode reveals rename/delete controls on sections and items plus "add" affordances; Read mode (default) stays a clean, fast copy surface. No persistence needed for which mode you're in.
+- **"Copy everything as text"** is a frontend-only convenience (formats the already-fetched items into one pasteable block) — no dedicated endpoint.
 
 ## 10. Progress Tracker Module Design
 
