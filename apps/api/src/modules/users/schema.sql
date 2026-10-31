@@ -30,3 +30,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_urls JSONB;
 -- to just "progress" (the only module with a real summary right now) so
 -- a fresh account still sees something useful without finding a toggle first.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS home_widgets JSONB NOT NULL DEFAULT '["progress"]'::jsonb;
+
+-- Which chart type (bar/line/pie) each progress summary chart renders as
+-- (progress/service.ts's CHART_METRICS) — a map of metric key -> chart
+-- type, user-customizable from the UI, persisted so it's remembered
+-- across visits/devices rather than resetting every page load.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS progress_chart_prefs JSONB NOT NULL DEFAULT '{}'::jsonb;

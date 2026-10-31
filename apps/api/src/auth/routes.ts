@@ -32,6 +32,7 @@ router.get('/auth/me', (req, res) => {
       displayName: user.display_name,
       avatarUrls: user.avatar_urls,
       homeWidgets: user.home_widgets,
+      chartPrefs: user.progress_chart_prefs,
     },
   });
 });

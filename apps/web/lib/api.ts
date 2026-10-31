@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import type { ChartPrefs } from "./progress-types";
 
 const API_URL = process.env.API_URL || "http://localhost:4000";
 
@@ -20,6 +21,10 @@ export interface SessionUser {
   // Which module summaries show on the home screen — user-configurable
   // (APPROACH.md §10), since there can be many modules over time.
   homeWidgets: string[];
+  // Chart type (bar/line/pie) per progress summary chart — map keyed by
+  // metric name, user-customizable, piggybacked on the session fetch
+  // rather than a separate request.
+  chartPrefs: ChartPrefs;
 }
 
 /**

@@ -1,5 +1,6 @@
 import { ValidationError, NotFoundError } from '../../errors.js';
 import * as repository from './repository.js';
+import * as usersRepository from '../users/repository.js';
 import type { ProgressItem, ItemType } from './repository.js';
 
 const STALE_DAYS = 7; // generic item-level staleness (interview/other/custom categories); daily uses its own at-risk signal
@@ -11,6 +12,11 @@ const DUE_SOON_DAYS = 3;
 // widget and the generic staleness/due-soon dashboard queries ('other'
 // included, as just the default unnamed category).
 const SPECIAL_TYPES = new Set<ItemType>(['daily', 'study_plan', 'interview']);
+
+// 'pending' sits between 'interview' and the terminal outcome — waiting to
+// hear back after the interview happened, distinct from still being
+// scheduled (APPROACH.md §10's stage stepper).
+const INTERVIEW_STAGES = ['applied', 'referral_asked', 'interview', 'pending', 'accepted', 'rejected'] as const;
 
 interface Topic {
   id: string;
@@ -181,11 +187,6 @@ export async function updateTopicStatus(
   return enrichItem(userId, updated!);
 }
 
-// 'pending' sits between 'interview' and the terminal outcome — waiting to
-// hear back after the interview happened, distinct from still being
-// scheduled (APPROACH.md §10's stage stepper).
-const INTERVIEW_STAGES = ['applied', 'referral_asked', 'interview', 'pending', 'accepted', 'rejected'] as const;
-
 export async function updateInterview(
   userId: string,
   itemId: string,
@@ -308,4 +309,91 @@ export async function getDashboard(userId: string) {
     staleInterviewsOrOther,
     openOther,
   };
+}
+
+// --- Chart data — one aggregated endpoint for all 4 summary charts
+// (categoryBreakdown/interviewFunnel/dailyStreakHistory/studyPlanCoverage)
+// rather than one round trip per chart, since they all read from the same
+// item list anyway.
+
+const CHART_HISTORY_DAYS = 30;
+
+export async function getChartData(userId: string) {
+  const items = await repository.listItems(userId);
+
+  // 1. Category breakdown — count per type across every item, regardless
+  // of status (a done/cancelled item still counts toward "what have I
+  // tracked", unlike the dashboard's active-only staleness signals).
+  const counts = new Map<string, number>();
+  for (const item of items) counts.set(item.type, (counts.get(item.type) ?? 0) + 1);
+  const categoryBreakdown = Array.from(counts.entries()).map(([category, count]) => ({ category, count }));
+
+  // 2. Interview funnel — fixed stage order, zero-filled so the chart's
+  // x-axis never silently drops an empty stage.
+  const interviews = items.filter((item) => item.type === 'interview');
+  const interviewFunnel = INTERVIEW_STAGES.map((stage) => ({
+    stage,
+    count: interviews.filter((item) => (item.data as { stage?: string }).stage === stage).length,
+  }));
+
+  // 3. Daily streak history — last 30 days, summed across every daily
+  // item (not per-item) via one grouped query.
+  const dailyItems = items.filter((item) => item.type === 'daily');
+  const logCounts = await repository.getLogCountsByDate(
+    userId,
+    dailyItems.map((item) => item.id),
+    CHART_HISTORY_DAYS,
+  );
+  const countsByDate = new Map(logCounts.map((r) => [r.log_date, r.count]));
+  const dailyStreakHistory: { date: string; completed: number; total: number }[] = [];
+  const today = new Date();
+  for (let i = CHART_HISTORY_DAYS - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = toDateString(d);
+    dailyStreakHistory.push({ date: dateStr, completed: countsByDate.get(dateStr) ?? 0, total: dailyItems.length });
+  }
+
+  // 4. Study plan coverage — % covered per plan, null (not 0) when a plan
+  // has no topics yet, same "don't fabricate" distinction as the dashboard.
+  const studyPlans = items.filter((item) => item.type === 'study_plan');
+  const studyPlanCoverageData = studyPlans.map((plan) => ({
+    plan: plan.title,
+    percent: studyPlanCoverage(topicsOf(plan)),
+  }));
+
+  return { categoryBreakdown, interviewFunnel, dailyStreakHistory, studyPlanCoverage: studyPlanCoverageData };
+}
+
+// --- Chart type preferences — which chart type (bar/line/pie) each
+// metric renders as, persisted per-user (users.progress_chart_prefs,
+// mirrors home_widgets) so it's remembered across visits/devices.
+
+// Pie is only offered for the two metrics whose values are genuinely parts
+// of one whole (category breakdown = share of all tracked items; funnel =
+// share of current interviews by stage) — allowing it on the other two
+// would misrepresent independent percentages (studyPlanCoverage) or a
+// 30-point time series (dailyStreakHistory) as proportional shares, which
+// is a correctness problem, not a style choice (dataviz skill: form
+// follows the data's job).
+const CHART_METRIC_KINDS: Record<string, readonly string[]> = {
+  categoryBreakdown: ['pie', 'bar'],
+  interviewFunnel: ['bar', 'pie'],
+  dailyStreakHistory: ['line', 'bar'],
+  studyPlanCoverage: ['bar', 'line'],
+};
+
+export async function updateChartPrefs(
+  userId: string,
+  patch: Record<string, string>,
+): Promise<Record<string, string>> {
+  for (const [metric, chartType] of Object.entries(patch)) {
+    const allowed = CHART_METRIC_KINDS[metric];
+    if (!allowed) throw new ValidationError(`Unknown chart metric: ${metric}`);
+    if (!allowed.includes(chartType)) {
+      throw new ValidationError(`${metric} only supports: ${allowed.join(', ')}`);
+    }
+  }
+  const user = await usersRepository.updateChartPrefs(userId, patch);
+  return user.progress_chart_prefs;
 }

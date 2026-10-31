@@ -2,17 +2,22 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/Card";
 import { getCurrentUser, ssrGet } from "@/lib/api";
-import type { ProgressItem, ProgressDashboard } from "@/lib/progress-types";
+import type { ProgressItem, ProgressDashboard, ProgressChartData } from "@/lib/progress-types";
 import { ProgressBoard } from "@/components/progress/ProgressBoard";
+import { ChartsSection } from "@/components/progress/ChartsSection";
 
 export default async function ProgressPage() {
   // SSR auth check, same pattern as the dashboard/profile pages (APPROACH.md §6).
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const [dashboard, items] = await Promise.all([
+  // One Promise.all, one round trip per dataset — /progress/charts itself
+  // is already a single aggregated endpoint for all 4 charts, rather than
+  // one request per chart (see progress/service.ts's getChartData).
+  const [dashboard, items, charts] = await Promise.all([
     ssrGet<ProgressDashboard>("/progress/dashboard"),
     ssrGet<ProgressItem[]>("/progress/items"),
+    ssrGet<ProgressChartData>("/progress/charts"),
   ]);
 
   const attentionCount = dashboard
@@ -66,6 +71,10 @@ export default async function ProgressPage() {
             </ul>
           )}
         </Card>
+
+        <div className="mt-6">
+          <ChartsSection data={charts} initialPrefs={user.chartPrefs} />
+        </div>
 
         <div className="mt-6">
           <ProgressBoard initialItems={items ?? []} />

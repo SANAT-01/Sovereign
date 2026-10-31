@@ -139,4 +139,24 @@ router.delete('/progress/items/:id', async (req, res, next) => {
   }
 });
 
+// Single aggregated endpoint for all 4 summary charts — one round trip
+// instead of one per chart, since they all read from the same item list.
+router.get('/progress/charts', async (req, res, next) => {
+  try {
+    res.json(await service.getChartData(userId(req)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+const chartPrefsSchema = z.object({ prefs: z.record(z.string()) });
+router.patch('/progress/chart-prefs', async (req, res, next) => {
+  try {
+    const { prefs } = chartPrefsSchema.parse(req.body);
+    res.json(await service.updateChartPrefs(userId(req), prefs));
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

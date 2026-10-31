@@ -97,6 +97,26 @@ export async function deleteItem(userId: string, itemId: string): Promise<boolea
 
 // --- Generic daily-completion log (APPROACH.md §10) ---
 
+// One grouped query across every daily item's logs, rather than N
+// per-item queries — used by the charts endpoint (service.ts's
+// getChartData), which aggregates across all daily items at once.
+export async function getLogCountsByDate(
+  userId: string,
+  itemIds: string[],
+  days: number,
+): Promise<{ log_date: string; count: number }[]> {
+  if (itemIds.length === 0) return [];
+  const result = await db.query<{ log_date: string; count: number }>(
+    `SELECT log_date::text, COUNT(*)::int AS count
+     FROM progress_item_logs
+     WHERE user_id = $1 AND item_id = ANY($2) AND log_date >= CURRENT_DATE - ($3 || ' days')::interval
+     GROUP BY log_date
+     ORDER BY log_date`,
+    [userId, itemIds, days - 1],
+  );
+  return result.rows;
+}
+
 export async function getItemLogDates(userId: string, itemId: string): Promise<string[]> {
   const result = await db.query<{ log_date: string }>(
     `SELECT log_date::text FROM progress_item_logs

@@ -14,6 +14,7 @@ export interface User {
   display_name: string | null;
   avatar_urls: AvatarUrls | null;
   home_widgets: string[];
+  progress_chart_prefs: Record<string, string>;
   created_at: Date;
 }
 
@@ -54,6 +55,16 @@ export async function updateHomeWidgets(id: string, homeWidgets: string[]): Prom
   const result = await db.query<User>(
     `UPDATE users SET home_widgets = $2 WHERE id = $1 RETURNING *`,
     [id, JSON.stringify(homeWidgets)],
+  );
+  return result.rows[0];
+}
+
+// Merges into the existing map (jsonb ||) rather than replacing it, so
+// changing one chart's type doesn't wipe the others' saved preference.
+export async function updateChartPrefs(id: string, patch: Record<string, string>): Promise<User> {
+  const result = await db.query<User>(
+    `UPDATE users SET progress_chart_prefs = progress_chart_prefs || $2::jsonb WHERE id = $1 RETURNING *`,
+    [id, JSON.stringify(patch)],
   );
   return result.rows[0];
 }
