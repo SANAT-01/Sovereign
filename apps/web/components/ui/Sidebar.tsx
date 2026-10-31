@@ -42,7 +42,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     >
       <div>
         <div className="flex items-center justify-between px-2 pb-6">
-          <span className="text-lg font-semibold text-white">Multi Purpose</span>
+          <span className="text-lg font-semibold text-white">Sovereign</span>
           <button
             type="button"
             onClick={onClose}

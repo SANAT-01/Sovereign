@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
-import { EditIcon } from "../ui/icons";
+import { EditIcon, TrashIcon } from "../ui/icons";
 import type { ProgressItem, InterviewStage, Topic } from "@/lib/progress-types";
 
 const STAGES: { value: InterviewStage; label: string }[] = [
@@ -31,6 +31,8 @@ interface EditPatch {
   dueAt?: string | null;
   company?: string;
   role?: string;
+  jdUrl?: string;
+  description?: string;
 }
 
 export function ItemCard({
@@ -41,6 +43,7 @@ export function ItemCard({
   onUpdateInterview,
   onToggleDone,
   onEdit,
+  onDelete,
 }: {
   item: ProgressItem;
   onToggleDaily: (item: ProgressItem) => void;
@@ -49,30 +52,38 @@ export function ItemCard({
   onUpdateInterview: (item: ProgressItem, patch: { stage?: InterviewStage; coveragePercent?: number }) => void;
   onToggleDone: (item: ProgressItem) => void;
   onEdit: (item: ProgressItem, patch: EditPatch) => void;
+  onDelete: (item: ProgressItem) => void;
 }) {
   const [newTopic, setNewTopic] = useState("");
   const [editing, setEditing] = useState(false);
 
   const company = (item.data.company as string) ?? item.title;
   const role = item.data.role as string | undefined;
+  const jdUrl = item.data.jdUrl as string | undefined;
+  const description = item.data.description as string | undefined;
 
   const [editTitle, setEditTitle] = useState(item.type === "interview" ? company : item.title);
   const [editRole, setEditRole] = useState(role ?? "");
+  const [editJdUrl, setEditJdUrl] = useState(jdUrl ?? "");
+  const [editDescription, setEditDescription] = useState(description ?? "");
   const [editDueAt, setEditDueAt] = useState(toInputValue(item.due_at, item.type === "interview"));
 
   function startEdit() {
     setEditTitle(item.type === "interview" ? company : item.title);
     setEditRole(role ?? "");
+    setEditJdUrl(jdUrl ?? "");
+    setEditDescription(description ?? "");
     setEditDueAt(toInputValue(item.due_at, item.type === "interview"));
     setEditing(true);
   }
 
   function saveEdit() {
     if (!editTitle.trim()) return;
-    const patch: EditPatch = { dueAt: editDueAt || null };
+    const patch: EditPatch = { dueAt: editDueAt || null, description: editDescription.trim() };
     if (item.type === "interview") {
       patch.company = editTitle.trim();
       patch.role = editRole.trim();
+      patch.jdUrl = editJdUrl.trim();
     } else {
       patch.title = editTitle.trim();
     }
@@ -91,6 +102,21 @@ export function ItemCard({
     </button>
   );
 
+  const deleteButton = (
+    <button
+      type="button"
+      onClick={() => {
+        if (window.confirm("Delete this item? This can't be undone.")) {
+          onDelete(item);
+        }
+      }}
+      aria-label="Delete"
+      className="shrink-0 text-slate-500 hover:text-red-400"
+    >
+      <TrashIcon width={16} height={16} />
+    </button>
+  );
+
   const editForm = editing && (
     <div className="mt-3 space-y-2 rounded-xl bg-white/5 p-3">
       <input
@@ -100,14 +126,23 @@ export function ItemCard({
         className="w-full rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
       />
       {item.type === "interview" && (
-        <input
-          value={editRole}
-          onChange={(e) => setEditRole(e.target.value)}
-          placeholder="Role (optional)"
-          className="w-full rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
-        />
+        <>
+          <input
+            value={editRole}
+            onChange={(e) => setEditRole(e.target.value)}
+            placeholder="Role (optional)"
+            className="w-full rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          <input
+            type="url"
+            value={editJdUrl}
+            onChange={(e) => setEditJdUrl(e.target.value)}
+            placeholder="Job description link (optional)"
+            className="w-full rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+        </>
       )}
-      {(item.type === "interview" || item.type === "other") && (
+      {item.type !== "daily" && item.type !== "study_plan" && (
         <input
           type={item.type === "interview" ? "datetime-local" : "date"}
           value={editDueAt}
@@ -115,6 +150,13 @@ export function ItemCard({
           className="w-full rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-accent"
         />
       )}
+      <textarea
+        value={editDescription}
+        onChange={(e) => setEditDescription(e.target.value)}
+        placeholder="Notes / description (optional)"
+        rows={2}
+        className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+      />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" className="px-3 py-1 text-xs" onClick={() => setEditing(false)}>
           Cancel
@@ -126,6 +168,10 @@ export function ItemCard({
     </div>
   );
 
+  const descriptionBlock = description && !editing && (
+    <p className="mt-2 whitespace-pre-wrap text-xs text-slate-400">{description}</p>
+  );
+
   if (item.type === "daily") {
     return (
       <Card variant="glass" className="p-4">
@@ -134,6 +180,7 @@ export function ItemCard({
             <div className="flex items-center gap-2">
               <p className="truncate text-sm font-medium text-white">{item.title}</p>
               {editButton}
+              {deleteButton}
             </div>
             <p className="text-xs text-slate-400">
               {item.streak && item.streak > 0 ? `${item.streak} day streak` : "No streak yet"}
@@ -155,6 +202,7 @@ export function ItemCard({
             {item.doneToday ? "Done today" : "Mark done"}
           </Button>
         </div>
+        {descriptionBlock}
         {editForm}
       </Card>
     );
@@ -168,6 +216,7 @@ export function ItemCard({
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-white">{item.title}</p>
           {editButton}
+              {deleteButton}
         </div>
         <div className="mt-2">
           <div className="flex items-center justify-between text-xs text-slate-400">
@@ -212,6 +261,7 @@ export function ItemCard({
             Add
           </Button>
         </form>
+        {descriptionBlock}
         {editForm}
       </Card>
     );
@@ -230,7 +280,18 @@ export function ItemCard({
             {role ? ` — ${role}` : ""}
           </p>
           {editButton}
+              {deleteButton}
         </div>
+        {jdUrl && (
+          <a
+            href={jdUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-0.5 inline-block text-xs text-accent underline-offset-2 hover:underline"
+          >
+            View job description ↗
+          </a>
+        )}
         {item.due_at && !terminal && (
           <p className="mt-0.5 text-xs text-slate-400">
             {(() => {
@@ -294,12 +355,13 @@ export function ItemCard({
             />
           </div>
         )}
+        {descriptionBlock}
         {editForm}
       </Card>
     );
   }
 
-  // "other"
+  // "other" and every user-defined category — generic done/due-date widget.
   return (
     <Card variant="glass" className="p-4">
       <div className="flex items-center justify-between gap-3">
@@ -307,6 +369,7 @@ export function ItemCard({
           <div className="flex items-center gap-2">
             <p className="truncate text-sm text-white">{item.title}</p>
             {editButton}
+              {deleteButton}
           </div>
           {item.due_at && (
             <p className="text-xs text-slate-400">
@@ -318,6 +381,7 @@ export function ItemCard({
           {item.status === "done" ? "Done" : "Mark done"}
         </Button>
       </div>
+      {descriptionBlock}
       {editForm}
     </Card>
   );

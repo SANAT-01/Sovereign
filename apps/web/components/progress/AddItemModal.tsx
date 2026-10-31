@@ -8,23 +8,34 @@ const TYPE_OPTIONS: { value: ItemType; label: string; hint: string }[] = [
   { value: "daily", label: "Daily", hint: "A recurring habit — POTD, revision, mock interview prep, etc. Tracked as a streak + heatmap." },
   { value: "interview", label: "Interview", hint: "A job application — Applied → Referral → Interview → Outcome, plus a prep-coverage % once scheduled." },
   { value: "study_plan", label: "Study Plan", hint: "A syllabus (e.g. GATE prep) — add topics, see a % coverage bar." },
-  { value: "other", label: "Other", hint: "Anything else — a simple to-do, optionally with a due date." },
+  { value: "other", label: "Other", hint: "Anything else — pick or name a category (or leave uncategorized), optionally with a due date." },
 ];
 
 export function AddItemModal({
   open,
   onClose,
   onSubmit,
+  existingCategories = [],
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (input: { type: ItemType; title: string; dueAt?: string; data?: Record<string, unknown> }) => Promise<void>;
+  // Previously-used category names (derived from current items,
+  // ProgressBoard.tsx) — quick-picks, not a fixed/managed list, since
+  // categories are just whatever string you type as the type (full
+  // flexibility, no separate category table/endpoint).
+  existingCategories?: string[];
 }) {
   const [type, setType] = useState<ItemType>("daily");
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
+  const [jdUrl, setJdUrl] = useState("");
+  const [topics, setTopics] = useState<string[]>([]);
+  const [newTopic, setNewTopic] = useState("");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!open) return null;
@@ -35,20 +46,44 @@ export function AddItemModal({
     setDueAt("");
     setCompany("");
     setRole("");
+    setJdUrl("");
+    setTopics([]);
+    setNewTopic("");
+    setCategory("");
+    setDescription("");
+  }
+
+  function addTopic() {
+    const trimmed = newTopic.trim();
+    if (!trimmed) return;
+    setTopics((ts) => [...ts, trimmed]);
+    setNewTopic("");
+  }
+
+  function removeTopic(index: number) {
+    setTopics((ts) => ts.filter((_, i) => i !== index));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const effectiveTitle = type === "interview" ? company : title;
     if (!effectiveTitle.trim()) return;
+    const effectiveType = type === "other" && category.trim() ? category.trim() : type;
 
     setSubmitting(true);
     try {
       await onSubmit({
-        type,
+        type: effectiveType,
         title: effectiveTitle.trim(),
         dueAt: dueAt || undefined,
-        data: type === "interview" ? { company: company.trim(), role: role.trim() || undefined } : undefined,
+        data: {
+          ...(description.trim() ? { description: description.trim() } : {}),
+          ...(type === "interview"
+            ? { company: company.trim(), role: role.trim() || undefined, jdUrl: jdUrl.trim() || undefined }
+            : type === "study_plan"
+              ? { topics }
+              : {}),
+        },
       });
       reset();
       onClose();
@@ -96,6 +131,13 @@ export function AddItemModal({
                 placeholder="Role (optional)"
                 className="w-full rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
               />
+              <input
+                type="url"
+                value={jdUrl}
+                onChange={(e) => setJdUrl(e.target.value)}
+                placeholder="Job description link (optional)"
+                className="w-full rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+              />
               <div>
                 <label className="text-xs text-slate-400">Interview date (optional)</label>
                 <input
@@ -108,6 +150,36 @@ export function AddItemModal({
             </>
           ) : (
             <>
+              {type === "other" && (
+                <div>
+                  <label className="text-xs text-slate-400">Category (optional — leave blank for general "Other")</label>
+                  {existingCategories.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {existingCategories.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setCategory(category === c ? "" : c)}
+                          className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                            category === c
+                              ? "border-accent/50 bg-accent/15 text-accent"
+                              : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="Or name a new category (e.g. Side Projects)"
+                    className="mt-1.5 w-full rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+                    autoFocus
+                  />
+                </div>
+              )}
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -115,7 +187,7 @@ export function AddItemModal({
                   type === "daily" ? "Habit name (e.g. LeetCode POTD)" : type === "study_plan" ? "Plan name (e.g. GATE Prep)" : "Title"
                 }
                 className="w-full rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
-                autoFocus
+                autoFocus={type !== "other"}
               />
               {type === "other" && (
                 <div>
@@ -128,8 +200,58 @@ export function AddItemModal({
                   />
                 </div>
               )}
+              {type === "study_plan" && (
+                <div>
+                  <label className="text-xs text-slate-400">Topics (optional — add more later too)</label>
+                  {topics.length > 0 && (
+                    <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                      {topics.map((t, i) => (
+                        <li
+                          key={`${t}-${i}`}
+                          className="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs text-slate-200"
+                        >
+                          {t}
+                          <button
+                            type="button"
+                            onClick={() => removeTopic(i)}
+                            aria-label={`Remove ${t}`}
+                            className="text-slate-400 hover:text-white"
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="mt-1.5 flex gap-2">
+                    <input
+                      value={newTopic}
+                      onChange={(e) => setNewTopic(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addTopic();
+                        }
+                      }}
+                      placeholder="Topic name (e.g. OS, DBMS)"
+                      className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                    <Button type="button" variant="ghost" className="px-4 py-2 text-sm" onClick={addTopic}>
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
+
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Notes / description (optional)"
+            rows={2}
+            className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+          />
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={onClose}>

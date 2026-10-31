@@ -109,6 +109,17 @@ export function EditIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function TrashIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 5.5h11" />
+      <path d="M8 5.5v-1a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1" />
+      <path d="M5.5 5.5 6 15a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l.5-9.5" />
+      <path d="M8 8.5v4M12 8.5v4" />
+    </Icon>
+  );
+}
+
 export function GoogleIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" width={18} height={18} {...props}>

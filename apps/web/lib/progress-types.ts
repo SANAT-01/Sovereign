@@ -1,6 +1,11 @@
 // Mirrors apps/api/src/modules/progress (generic items model, APPROACH.md §10).
 
-export type ItemType = "daily" | "study_plan" | "interview" | "other";
+// "daily" | "study_plan" | "interview" get dedicated widgets (ItemCard.tsx);
+// any other string is a user-defined category sharing the generic widget,
+// grouped into its own section by that exact string (ProgressBoard.tsx) —
+// full flexibility, no fixed list.
+export type ItemType = string;
+export const SPECIAL_ITEM_TYPES = ["daily", "study_plan", "interview"] as const;
 export type ItemStatus = "active" | "done" | "cancelled";
 
 export interface Topic {

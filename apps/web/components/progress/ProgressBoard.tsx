@@ -6,12 +6,21 @@ import { AddItemModal } from "./AddItemModal";
 import { ItemCard } from "./ItemCard";
 import type { ProgressItem, ItemType, InterviewStage, Topic } from "@/lib/progress-types";
 
-const SECTION_TITLES: Record<ItemType, string> = {
+// Fixed sections always shown (even empty, per the "don't fabricate
+// progress" rule — an empty section still distinguishes "nothing tracked
+// yet" from "doesn't exist"). Anything else is a user-defined category
+// (full flexibility) — its section only appears once it has an item, and
+// is titled by the raw string rather than a lookup.
+const FIXED_TYPES: ItemType[] = ["daily", "study_plan", "interview", "other"];
+const FIXED_TITLES: Record<string, string> = {
   daily: "Daily Habits",
   study_plan: "Study Plans",
   interview: "Interviews",
   other: "Other",
 };
+function sectionTitle(type: ItemType): string {
+  return FIXED_TITLES[type] ?? type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, " ");
+}
 
 /**
  * Owns all Progress Tracker state and mutations in one place (APPROACH.md
@@ -97,12 +106,18 @@ export function ProgressBoard({ initialItems }: { initialItems: ProgressItem[] }
 
   async function handleEdit(
     item: ProgressItem,
-    patch: { title?: string; dueAt?: string | null; company?: string; role?: string },
+    patch: { title?: string; dueAt?: string | null; company?: string; role?: string; jdUrl?: string; description?: string },
   ) {
     patchItem(item.id, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(patch.dueAt !== undefined ? { due_at: patch.dueAt } : {}),
-      data: { ...item.data, ...(patch.company !== undefined ? { company: patch.company } : {}), ...(patch.role !== undefined ? { role: patch.role } : {}) },
+      data: {
+        ...item.data,
+        ...(patch.company !== undefined ? { company: patch.company } : {}),
+        ...(patch.role !== undefined ? { role: patch.role } : {}),
+        ...(patch.jdUrl !== undefined ? { jdUrl: patch.jdUrl } : {}),
+        ...(patch.description !== undefined ? { description: patch.description } : {}),
+      },
     });
     const res = await fetch(`/api/progress/items/${item.id}`, {
       method: "PATCH",
@@ -113,10 +128,23 @@ export function ProgressBoard({ initialItems }: { initialItems: ProgressItem[] }
     patchItem(item.id, updated);
   }
 
-  const grouped = (["daily", "study_plan", "interview", "other"] as ItemType[]).map((type) => ({
+  async function handleDelete(item: ProgressItem) {
+    setItems((its) => its.filter((i) => i.id !== item.id));
+    await fetch(`/api/progress/items/${item.id}`, { method: "DELETE" });
+  }
+
+  const customCategories = Array.from(new Set(items.map((i) => i.type)))
+    .filter((t) => !FIXED_TYPES.includes(t))
+    .sort((a, b) => a.localeCompare(b));
+
+  const grouped = [...FIXED_TYPES, ...customCategories].map((type) => ({
     type,
     items: items.filter((i) => i.type === type),
   }));
+
+  // Quick-pick suggestions in the "Add item" modal — any custom category
+  // already in use, so you can reuse "Side Projects" without retyping it.
+  const existingCategories = customCategories;
 
   return (
     <div>
@@ -129,7 +157,7 @@ export function ProgressBoard({ initialItems }: { initialItems: ProgressItem[] }
       <div className="mt-4 space-y-8">
         {grouped.map(({ type, items: typeItems }) => (
           <div key={type}>
-            <p className="text-sm font-medium text-accent">{SECTION_TITLES[type]}</p>
+            <p className="text-sm font-medium text-accent">{sectionTitle(type)}</p>
             {typeItems.length === 0 ? (
               <p className="mt-2 text-sm text-slate-400">Nothing here yet.</p>
             ) : (
@@ -144,6 +172,7 @@ export function ProgressBoard({ initialItems }: { initialItems: ProgressItem[] }
                     onUpdateInterview={handleUpdateInterview}
                     onToggleDone={handleToggleDone}
                     onEdit={handleEdit}
+                    onDelete={handleDelete}
                   />
                 ))}
               </div>
@@ -152,7 +181,12 @@ export function ProgressBoard({ initialItems }: { initialItems: ProgressItem[] }
         ))}
       </div>
 
-      <AddItemModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleCreate} />
+      <AddItemModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleCreate}
+        existingCategories={existingCategories}
+      />
     </div>
   );
 }

@@ -1,6 +1,12 @@
 import { db } from '../../db/client.js';
 
-export type ItemType = 'daily' | 'study_plan' | 'interview' | 'other';
+// 'daily' | 'study_plan' | 'interview' get dedicated widgets (service.ts);
+// any other string is a user-defined category, rendered with the same
+// generic widget as 'other' (ItemCard.tsx's fallback branch) and grouped
+// into its own section by that exact string (ProgressBoard.tsx) — "saved
+// in the db" simply by being a real item's `type` value, no separate
+// categories table needed (APPROACH.md §10's "only 1-2 tables" constraint).
+export type ItemType = string;
 export type ItemStatus = 'active' | 'done' | 'cancelled';
 
 export interface ProgressItem {
@@ -79,6 +85,14 @@ export async function updateItem(
     ],
   );
   return result.rows[0] ?? null;
+}
+
+export async function deleteItem(userId: string, itemId: string): Promise<boolean> {
+  const result = await db.query(
+    'DELETE FROM progress_items WHERE user_id = $1 AND id = $2',
+    [userId, itemId],
+  );
+  return (result.rowCount ?? 0) > 0;
 }
 
 // --- Generic daily-completion log (APPROACH.md §10) ---

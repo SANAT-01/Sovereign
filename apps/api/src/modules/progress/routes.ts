@@ -28,9 +28,13 @@ router.get('/progress/items', async (req, res, next) => {
 });
 
 // Single generic creation endpoint — the "one modal, pick a type" UX
-// (APPROACH.md §10) maps to one endpoint, not one per type.
+// (APPROACH.md §10) maps to one endpoint, not one per type. `type` is a
+// free-form string, not a fixed enum: 'daily'/'study_plan'/'interview' get
+// dedicated widgets (service.ts's SPECIAL_TYPES), anything else is a
+// user-defined category sharing the generic widget — full flexibility,
+// validated (non-empty, length) in service.ts rather than here.
 const createItemSchema = z.object({
-  type: z.enum(['daily', 'study_plan', 'interview', 'other']),
+  type: z.string(),
   title: z.string().min(1),
   dueAt: z.string().optional(),
   data: z.record(z.unknown()).optional(),
@@ -114,11 +118,22 @@ const editItemSchema = z.object({
   dueAt: z.string().nullable().optional(),
   company: z.string().optional(),
   role: z.string().optional(),
+  jdUrl: z.string().optional(),
+  description: z.string().optional(),
 });
 router.patch('/progress/items/:id', async (req, res, next) => {
   try {
     const patch = editItemSchema.parse(req.body);
     res.json(await service.editItem(userId(req), req.params.id, patch));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/progress/items/:id', async (req, res, next) => {
+  try {
+    await service.deleteItem(userId(req), req.params.id);
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

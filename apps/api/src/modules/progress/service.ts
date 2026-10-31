@@ -2,8 +2,15 @@ import { ValidationError, NotFoundError } from '../../errors.js';
 import * as repository from './repository.js';
 import type { ProgressItem, ItemType } from './repository.js';
 
-const STALE_DAYS = 7; // generic item-level staleness (interview/other); daily uses its own at-risk signal
+const STALE_DAYS = 7; // generic item-level staleness (interview/other/custom categories); daily uses its own at-risk signal
 const DUE_SOON_DAYS = 3;
+
+// The only types with a dedicated widget (ItemCard.tsx) and dedicated
+// dashboard signal below. Anything else is a user-defined category —
+// full flexibility, no fixed list — sharing the generic done/due-date
+// widget and the generic staleness/due-soon dashboard queries ('other'
+// included, as just the default unnamed category).
+const SPECIAL_TYPES = new Set<ItemType>(['daily', 'study_plan', 'interview']);
 
 interface Topic {
   id: string;
@@ -93,22 +100,45 @@ export async function createItem(
 ) {
   if (!input.title.trim()) throw new ValidationError('Title is required');
 
-  const validTypes: ItemType[] = ['daily', 'study_plan', 'interview', 'other'];
-  if (!validTypes.includes(input.type)) throw new ValidationError('Invalid item type');
+  const type = input.type.trim();
+  if (!type) throw new ValidationError('Type is required');
+  if (type.length > 40) throw new ValidationError('Type must be 40 characters or fewer');
 
-  if (input.type === 'interview') {
-    const data = (input.data ?? {}) as { company?: string };
+  const description = (input.data as { description?: string } | undefined)?.description;
+  if (description !== undefined && description.length > 1000) {
+    throw new ValidationError('Description must be 1000 characters or fewer');
+  }
+
+  if (type === 'interview') {
+    const data = (input.data ?? {}) as { company?: string; jdUrl?: string };
     if (!data.company?.trim()) throw new ValidationError('Company is required for interview items');
+    if (data.jdUrl?.trim()) {
+      try {
+        new URL(data.jdUrl.trim());
+      } catch {
+        throw new ValidationError('Job description link must be a valid URL');
+      }
+    }
+  }
+
+  let initialTopics: Topic[] = [];
+  if (type === 'study_plan') {
+    const rawTopics = (input.data as { topics?: unknown } | undefined)?.topics;
+    if (Array.isArray(rawTopics)) {
+      initialTopics = rawTopics
+        .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+        .map((title) => ({ id: newId(), title: title.trim(), status: 'not_started', lastTouchedAt: null }));
+    }
   }
 
   const item = await repository.createItem(userId, {
-    type: input.type,
+    type,
     title: input.title.trim(),
     dueAt: input.dueAt,
     data: {
       ...input.data,
-      ...(input.type === 'interview' ? { stage: 'applied', coveragePercent: 0 } : {}),
-      ...(input.type === 'study_plan' ? { topics: [] } : {}),
+      ...(type === 'interview' ? { stage: 'applied', coveragePercent: 0 } : {}),
+      ...(type === 'study_plan' ? { topics: initialTopics } : {}),
     },
   });
   return enrichItem(userId, item);
@@ -195,16 +225,33 @@ export async function setItemDone(userId: string, itemId: string, done: boolean)
 export async function editItem(
   userId: string,
   itemId: string,
-  patch: { title?: string; dueAt?: string | null; company?: string; role?: string },
+  patch: {
+    title?: string;
+    dueAt?: string | null;
+    company?: string;
+    role?: string;
+    jdUrl?: string;
+    description?: string;
+  },
 ) {
   if (patch.title !== undefined && !patch.title.trim()) {
     throw new ValidationError('Title cannot be empty');
+  }
+  if (patch.description !== undefined && patch.description.length > 1000) {
+    throw new ValidationError('Description must be 1000 characters or fewer');
   }
   const item = await repository.getItem(userId, itemId);
   if (!item) throw new NotFoundError('Item not found');
 
   if (item.type === 'interview' && patch.company !== undefined && !patch.company.trim()) {
     throw new ValidationError('Company is required for interview items');
+  }
+  if (patch.jdUrl !== undefined && patch.jdUrl.trim()) {
+    try {
+      new URL(patch.jdUrl.trim());
+    } catch {
+      throw new ValidationError('Job description link must be a valid URL');
+    }
   }
 
   const updated = await repository.updateItem(userId, itemId, {
@@ -213,9 +260,16 @@ export async function editItem(
     dataPatch: {
       ...(patch.company !== undefined ? { company: patch.company.trim() } : {}),
       ...(patch.role !== undefined ? { role: patch.role.trim() } : {}),
+      ...(patch.jdUrl !== undefined ? { jdUrl: patch.jdUrl.trim() } : {}),
+      ...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
     },
   });
   return enrichItem(userId, updated!);
+}
+
+export async function deleteItem(userId: string, itemId: string): Promise<void> {
+  const deleted = await repository.deleteItem(userId, itemId);
+  if (!deleted) throw new NotFoundError('Item not found');
 }
 
 // --- Dashboard aggregation — the actual feature (APPROACH.md §10) ---
@@ -241,10 +295,11 @@ export async function getDashboard(userId: string) {
     repository.listStaleItems(userId, STALE_DAYS),
     repository.listDueSoonItems(userId, DUE_SOON_DAYS),
   ]);
-  const staleInterviewsOrOther = staleGeneric.filter((i) => i.type === 'interview' || i.type === 'other');
-  const dueSoon = dueSoonGeneric.filter((i) => i.type === 'interview' || i.type === 'other');
+  // 'interview' plus any non-special type ('other' and user-defined categories alike).
+  const staleInterviewsOrOther = staleGeneric.filter((i) => i.type === 'interview' || !SPECIAL_TYPES.has(i.type));
+  const dueSoon = dueSoonGeneric.filter((i) => i.type === 'interview' || !SPECIAL_TYPES.has(i.type));
 
-  const openOther = items.filter((i) => i.type === 'other' && i.status === 'active');
+  const openOther = items.filter((i) => !SPECIAL_TYPES.has(i.type) && i.status === 'active');
 
   return {
     dailyAtRisk,
