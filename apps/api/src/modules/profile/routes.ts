@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { z } from 'zod';
 import { requireAuth } from '../../auth/middleware';
 import type { User } from '../users/repository';
 import * as service from './service';
@@ -26,6 +27,18 @@ router.post('/profile/avatar', requireAuth, upload.single('avatar'), async (req,
     }
     const requester = req.user as User;
     const user = await service.uploadAvatar(requester.id, req.file);
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const homeWidgetsSchema = z.object({ widgets: z.array(z.string()) });
+router.patch('/profile/home-widgets', requireAuth, async (req, res, next) => {
+  try {
+    const { widgets } = homeWidgetsSchema.parse(req.body);
+    const requester = req.user as User;
+    const user = await service.updateHomeWidgets(requester.id, widgets);
     res.json({ user });
   } catch (err) {
     next(err);

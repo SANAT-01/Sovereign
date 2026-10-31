@@ -143,14 +143,52 @@ Unlike the other modules, the portfolio is **public-facing** (visitors, not just
 
 Don't force it into the same pattern as data-heavy modules just for consistency — match the module's actual needs.
 
-## 10. Explicitly Out of Scope (for now)
+## 10. Progress Tracker Module Design
+
+**Revised to a generic items model** (supersedes an earlier one-table-per-type draft) — the project owner explicitly wants new tracked-item types addable later without a schema migration each time. So instead of a dedicated table per type, the `progress` module has two tables total:
+
+```sql
+progress_items (
+  id, user_id, type, title, status,
+  due_at,             -- "the date that matters" for this item (interview date, plan due date); null if not applicable
+  last_activity_at,   -- generic staleness signal — updated whenever the item is meaningfully touched
+  data,               -- JSONB — everything type-specific lives here (coverage %, stage, company/role, topics[], repeats, ...)
+  created_at
+)
+
+progress_item_logs (
+  id, item_id, user_id, log_date   -- generic daily-completion log, usable by any "streak-able" type, not just today's "daily"
+)
+```
+
+**Why this shape**: `due_at` and `last_activity_at` are generalized across every type (not "scheduled_at" for interviews and "due_date" for plans as separate columns), so the dashboard's "what's coming up" and "what's gone stale" queries are each one generic query across all items, not N per-type queries. `data` (JSONB) holds whatever a type needs without a migration. `progress_item_logs` stays a real table (not JSONB-in-`data`) because per-day completion genuinely benefits from relational queries (streak math, the heatmap) — but it's keyed generically off `item_id`, so any future type that wants a streak gets one for free.
+
+**Current types** (selected via one generic "add item" modal — a `type` dropdown, not one form per type):
+| Type | Widget | `data` shape | Uses `progress_item_logs`? |
+|---|---|---|---|
+| `daily` | Streak + 30-day heatmap | `{}` (nothing extra needed) | Yes |
+| `study_plan` | % coverage bar (topics done ÷ total), computed, not stored, with the topic list underneath for the "last touched" resume point | `{ topics: [{ id, title, status, lastTouchedAt }] }` | No |
+| `interview` | Stage stepper (Applied → Referral asked → Interview → Accepted/Rejected) + a prep-coverage % bar once scheduled | `{ company, role, stage, coveragePercent, referralApplicable }` (`due_at` = the scheduled interview date) | No |
+| `other` | Plain to-do with optional due date | `{ repeats }` (`due_at` = the due date) | No |
+
+A "mock interview prep" item is just a `daily` item named accordingly — not its own type, since it needs the same heatmap widget.
+
+**The dashboard is the actual feature.** Per-type CRUD is necessary plumbing, but the thing that solves "I forget what I planned" is a single aggregating view, surfaced first on opening the module, computed by one `service.ts` function (`getDashboard(userId)`):
+- `daily` items: current streak + at-risk-today flag + heatmap.
+- Items (any type) stale: `status != 'done' AND last_activity_at < now() - N days` — one generic query, not one per type.
+- Items (any type) due soon: `due_at BETWEEN now() AND now() + 3 days` — same genericity.
+- Open `other` items, due-soonest first.
+
+**Explicitly deferred for this pass**: browser push notifications and email digests. The on-open dashboard is the v1 solution to "forgetting"; revisit only if the dashboard alone proves insufficient once actually used daily (§14's validation gate applies here too — this module isn't "done" until it's used for real).
+
+## 11. Explicitly Out of Scope (for now)
 
 - Supabase or other managed backend — decided against, see §3.
 - Separate apps per module on separate domains — decided against, see §2 (revisit only after 2-3 validated modules).
 - Payment integration — design will reuse the same module pattern (own `payments` module with webhook handler) when actually needed; not built until there's something to charge for.
 - NestJS — considered, Express chosen for learning; structure in §5 recovers most of the organizational benefit by hand.
 
-## 11. Build Order
+## 12. Build Order
 
 1. Shared foundation: Postgres connection, `users` table, Google OAuth flow + session middleware, base Express app wiring, base Next.js app shell with login.
 2. Expense Tracker module (backend + frontend), used daily.
@@ -159,29 +197,29 @@ Don't force it into the same pattern as data-heavy modules just for consistency 
 5. Portfolio module (lower priority, public-facing, can be built opportunistically).
 6. Any further modules, one at a time, same rule as step 4.
 
-## 12. Tooling & Validation per Layer
+## 13. Tooling & Validation per Layer
 
 | Area | Tooling | Notes |
 |---|---|---|
 | **Frontend** | Next.js, TypeScript, Tailwind, React Query or SWR for CSR data fetching | Stays presentation-only per §6 — no business logic here. |
 | **Backend** | Express, TypeScript, Zod (request validation in `routes.ts`) | Business logic in `service.ts`, per §5. |
-| **Data Modeling** | PostgreSQL, Drizzle (or node-pg-migrate) for versioned migrations | One ERD per module, reviewed before writing migration files (§15 — document before implementing). Shared `users` table pattern per §7. |
+| **Data Modeling** | PostgreSQL, Drizzle (or node-pg-migrate) for versioned migrations | One ERD per module, reviewed before writing migration files (§16 — document before implementing). Shared `users` table pattern per §7. |
 | **OAuth** | Passport.js (`passport-google-oauth20`) or Auth.js, server-side session (signed cookie, not JWT-in-localStorage) | Session validated by `auth/middleware.ts`, reused by every module's routes (§5). |
 | **Testing** | Vitest/Jest for `service.ts` unit tests (no HTTP needed — this is exactly why services are plain functions, §5); Supertest for `routes.ts` integration tests; Playwright for end-to-end flows through the UI | Unit tests are cheapest and should cover most business-rule cases; e2e reserved for the critical path per module (e.g. "create expense end to end"). |
 | **UI** | Tailwind + a small shared component set (buttons, forms, layout) reused across modules, not rebuilt per module | Keeps new modules fast to build and visually consistent without a heavy design system. |
 
-## 13. Feature Validation Workflow
+## 14. Feature Validation Workflow
 
 **Rule: every module/feature gets validated on completion before being considered "done" — not just written and moved past.**
 
 On completion of a feature or module, run:
-1. **Automated tests** — the relevant `service.ts` unit tests and `routes.ts` integration tests (§12) must pass.
+1. **Automated tests** — the relevant `service.ts` unit tests and `routes.ts` integration tests (§13) must pass.
 2. **A review pass** — use the `/code-review` skill (medium effort is enough for routine feature work; reserve higher effort for auth, payments, or anything security-sensitive) against the diff, to catch correctness bugs before they're considered shipped.
 3. **A real run-through** — use the `/run` skill (or manually) to actually exercise the feature in the browser end-to-end, not just trust passing tests. SSR and CSR paths (§6) should both be checked where a feature touches both.
 
-Only after all three pass does a module move to "used daily" status, which is the gate for starting the next module (§11's sequencing rule).
+Only after all three pass does a module move to "used daily" status, which is the gate for starting the next module (§12's sequencing rule).
 
-## 14. Revisit Triggers
+## 15. Revisit Triggers
 
 Decisions above aren't permanent. Specific signals that should trigger re-evaluating a decision made here:
 
@@ -192,8 +230,8 @@ Decisions above aren't permanent. Specific signals that should trigger re-evalua
 
 Don't pre-solve these — build until one of these triggers actually fires.
 
-## 15. Working Agreement
+## 16. Working Agreement
 
 - **Document before implementing.** Any architecture-affecting decision (new module, infra choice, exposure/routing change, data model change) gets written into this document *before* code is written, not after. This file is kept current — amended in place, not left stale — as the single source of truth for why things are built the way they are.
 - Code changes that follow from a decision already documented here don't need a round-trip back to this file first — only genuinely new decisions do.
-- **Every feature is validated on completion**, per §13 — tests, review, and a real run-through — before being marked done.
+- **Every feature is validated on completion**, per §14 — tests, review, and a real run-through — before being marked done.

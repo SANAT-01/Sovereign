@@ -17,6 +17,28 @@ export interface SessionUser {
   // displayed (sidebar thumbnail vs. profile page preview vs. a future
   // larger view), per the profile service's upload-time resizing.
   avatarUrls: AvatarUrls | null;
+  // Which module summaries show on the home screen — user-configurable
+  // (APPROACH.md §10), since there can be many modules over time.
+  homeWidgets: string[];
+}
+
+/**
+ * Generic SSR direct-call helper (APPROACH.md §6) for GET endpoints that
+ * return null-ably (backend unreachable, or not found) — callers decide
+ * fallback behavior, same pattern as getCurrentUser.
+ */
+export async function ssrGet<T>(path: string): Promise<T | null> {
+  const cookieHeader = await getCookieHeader();
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      headers: cookieHeader ? { cookie: cookieHeader } : {},
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -27,9 +49,13 @@ export interface SessionUser {
  * Never call this from a Client Component — CSR must go through the
  * Next.js rewrite/proxy instead (see next.config.js).
  */
-export async function getCurrentUser(): Promise<SessionUser | null> {
+export async function getCookieHeader(): Promise<string> {
   const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
+  return cookieStore.toString();
+}
+
+export async function getCurrentUser(): Promise<SessionUser | null> {
+  const cookieHeader = await getCookieHeader();
 
   try {
     const res = await fetch(`${API_URL}/auth/me`, {

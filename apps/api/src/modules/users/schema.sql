@@ -23,3 +23,10 @@ CREATE TABLE IF NOT EXISTS users (
 -- everywhere. Replaces the earlier single-URL avatar_url column.
 ALTER TABLE users DROP COLUMN IF EXISTS avatar_url;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_urls JSONB;
+
+-- Which module summaries show on the home screen (user-configurable —
+-- "there can be many different applications," so home is a curated
+-- summary, not a fixed dashboard). JSONB array of module keys. Defaults
+-- to just "progress" (the only module with a real summary right now) so
+-- a fresh account still sees something useful without finding a toggle first.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS home_widgets JSONB NOT NULL DEFAULT '["progress"]'::jsonb;

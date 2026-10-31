@@ -19,8 +19,22 @@ const VARIANT_SIZES: Record<keyof AvatarUrls, number> = {
   large: 512,
 };
 
+// Module keys that currently have a real home-screen summary to show.
+// Keeps the home screen from offering a toggle for a module that would
+// just show fabricated/placeholder data (APPROACH.md §10 applies the same
+// "don't fabricate" rule to home widgets as to the progress dashboard).
+const AVAILABLE_WIDGETS = new Set(['progress']);
+
 export async function getProfile(userId: string): Promise<User | null> {
   return usersRepository.findById(userId);
+}
+
+export async function updateHomeWidgets(userId: string, widgets: string[]): Promise<User> {
+  const invalid = widgets.filter((w) => !AVAILABLE_WIDGETS.has(w));
+  if (invalid.length > 0) {
+    throw new ValidationError(`Unknown widget(s): ${invalid.join(', ')}`);
+  }
+  return usersRepository.updateHomeWidgets(userId, widgets);
 }
 
 export async function uploadAvatar(

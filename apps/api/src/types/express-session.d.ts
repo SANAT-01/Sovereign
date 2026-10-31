@@ -13,6 +13,7 @@ declare global {
         medium: string;
         large: string;
       } | null;
+      home_widgets: string[];
       created_at: Date;
     }
   }

@@ -100,6 +100,15 @@ export function UserIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function EditIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M12.5 4.5 15.5 7.5" />
+      <path d="M4 15.5 4.75 12 13 3.75a1.5 1.5 0 0 1 2.12 0l1.13 1.13a1.5 1.5 0 0 1 0 2.12L8 15.25z" />
+    </Icon>
+  );
+}
+
 export function GoogleIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" width={18} height={18} {...props}>

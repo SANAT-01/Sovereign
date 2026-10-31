@@ -31,6 +31,7 @@ router.get('/auth/me', (req, res) => {
       email: user.email,
       displayName: user.display_name,
       avatarUrls: user.avatar_urls,
+      homeWidgets: user.home_widgets,
     },
   });
 });

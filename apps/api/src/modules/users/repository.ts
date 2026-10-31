@@ -13,6 +13,7 @@ export interface User {
   email: string;
   display_name: string | null;
   avatar_urls: AvatarUrls | null;
+  home_widgets: string[];
   created_at: Date;
 }
 
@@ -45,6 +46,14 @@ export async function updateAvatarUrls(id: string, avatarUrls: AvatarUrls): Prom
   const result = await db.query<User>(
     `UPDATE users SET avatar_urls = $2 WHERE id = $1 RETURNING *`,
     [id, JSON.stringify(avatarUrls)],
+  );
+  return result.rows[0];
+}
+
+export async function updateHomeWidgets(id: string, homeWidgets: string[]): Promise<User> {
+  const result = await db.query<User>(
+    `UPDATE users SET home_widgets = $2 WHERE id = $1 RETURNING *`,
+    [id, JSON.stringify(homeWidgets)],
   );
   return result.rows[0];
 }
