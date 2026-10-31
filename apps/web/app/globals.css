@@ -15,9 +15,13 @@ html {
 
 body {
   @apply min-h-screen text-slate-100 antialiased;
+  /* Stronger, more varied color blobs so the increased card transparency
+     (Card.tsx, Sidebar.tsx) has something visible to show through — flat
+     transparency over a near-flat background doesn't read as "glass". */
   background:
-    radial-gradient(circle at 15% 10%, rgba(45, 212, 160, 0.12), transparent 45%),
-    radial-gradient(circle at 85% 0%, rgba(99, 102, 241, 0.10), transparent 40%),
+    radial-gradient(circle at 12% 8%, rgba(45, 212, 160, 0.22), transparent 42%),
+    radial-gradient(circle at 88% 0%, rgba(99, 102, 241, 0.18), transparent 38%),
+    radial-gradient(circle at 50% 100%, rgba(236, 72, 153, 0.08), transparent 45%),
     #0b1210;
   background-attachment: fixed;
 }

@@ -9,10 +9,12 @@ interface CardProps {
 }
 
 const variantClasses: Record<CardVariant, string> = {
-  // bg-white/10 + backdrop-blur per visual-style.md's glass card recipe.
-  glass: "bg-white/[0.06] border border-white/10 backdrop-blur-xl",
-  // Solid dark-teal cards, used for the primary/"on" widgets.
-  solid: "bg-surface-card/80 border border-white/5 backdrop-blur",
+  // More see-through glass: lower fill opacity + stronger blur so the page
+  // background shows through more, per visual-style.md's glass recipe.
+  glass: "bg-white/[0.035] border border-white/15 backdrop-blur-2xl",
+  // Solid dark-teal cards stay a bit more opaque (they're the "primary/on"
+  // widgets) but still noticeably translucent, not flat.
+  solid: "bg-surface-card/55 border border-white/10 backdrop-blur-xl",
 };
 
 /**

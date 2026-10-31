@@ -21,7 +21,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col justify-between border-r border-white/10 bg-white/[0.04] px-4 py-6 backdrop-blur-xl">
+    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col justify-between border-r border-white/15 bg-white/[0.025] px-4 py-6 backdrop-blur-2xl">
       <div>
         <div className="px-2 pb-6 text-lg font-semibold text-white">Multi Purpose</div>
         <nav className="flex flex-col gap-1">

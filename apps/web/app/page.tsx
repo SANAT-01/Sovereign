@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/Card";
 import { ModuleCard } from "@/components/ui/ModuleCard";
+import { ClientOnly } from "@/components/ui/ClientOnly";
 import { ExpenseTrendChart } from "@/components/ui/charts/ExpenseTrendChart";
 import { ProgressGauge } from "@/components/ui/charts/ProgressGauge";
 import { NotesActivityChart } from "@/components/ui/charts/NotesActivityChart";
+import { ChartSkeleton } from "@/components/ui/charts/ChartSkeleton";
 import { WalletIcon, NotesIcon, TargetIcon, BriefcaseIcon } from "@/components/ui/icons";
 import { getCurrentUser } from "@/lib/api";
 
@@ -70,11 +72,26 @@ export default async function DashboardPage() {
         {/* Chart widgets — placeholder/sample data, per visual-style.md's
             "Dashboard charts — current phase" note. These will swap to real
             data once each module's API exists, without redesigning the
-            widgets themselves. */}
+            widgets themselves.
+
+            Each is wrapped in <ClientOnly>: Recharts assigns internal
+            clipPath/gradient ids from a global counter that isn't
+            guaranteed to match between the server render and the client
+            render when several chart instances share a page, which causes
+            a hydration mismatch unrelated to our own markup. Rendering
+            these client-only (with a same-shape skeleton as the SSR
+            fallback) is the correct fix per hydration-error.md — not
+            disabling SSR for the whole page or suppressing the warning. */}
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <ExpenseTrendChart />
-          <NotesActivityChart />
-          <ProgressGauge />
+          <ClientOnly fallback={<ChartSkeleton />}>
+            <ExpenseTrendChart />
+          </ClientOnly>
+          <ClientOnly fallback={<ChartSkeleton />}>
+            <NotesActivityChart />
+          </ClientOnly>
+          <ClientOnly fallback={<ChartSkeleton variant="circle" />}>
+            <ProgressGauge />
+          </ClientOnly>
         </div>
       </main>
     </AppShell>
