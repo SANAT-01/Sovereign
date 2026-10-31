@@ -1,64 +1,67 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: multi_purpose
-    # No published port — internal only, not even to the VPS host (APPROACH.md §6).
-    volumes:
-      - db-data:/var/lib/postgresql/data
-
   minio:
+    # MinIO rebranded to AIStor — the image moved to the minio/aistor/*
+    # path on quay.io. Pinned to a specific release (not :latest, which
+    # 401s without a login) since that's what pulled successfully.
     image: quay.io/minio/aistor/minio:RELEASE.2026-09-19T17-05-25Z
+    container_name: mp-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: app
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+      # Free-tier license, read from the git-ignored root .env file —
+      # never commit this value or paste it into chat/code directly.
       MINIO_LICENSE: ${MINIO_LICENSE}
     volumes:
       - minio-data:/data
+    networks: [default]
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.minio-files.rule=Host(`files.sanattudu.tech`)"
-      - "traefik.http.routers.minio-files.entrypoints=websecure"
-      - "traefik.http.routers.minio-files.tls.certresolver=letsencrypt"
-      - "traefik.http.services.minio-files.loadbalancer.server.port=9000"
-    networks:
-      - internal
-      - traefik-network
+      - "traefik.http.routers.mp-minio-api.rule=Host(`storage.sanattudu.tech`)"
+      - "traefik.http.routers.mp-minio-api.entrypoints=websecure"
+      - "traefik.http.routers.mp-minio-api.tls=true"
+      - "traefik.http.routers.mp-minio-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mp-minio-api.loadbalancer.server.port=9000"
+      - "traefik.http.routers.mp-minio-console.rule=Host(`storage-console.sanattudu.tech`)"
+      - "traefik.http.routers.mp-minio-console.entrypoints=websecure"
+      - "traefik.http.routers.mp-minio-console.tls=true"
+      - "traefik.http.routers.mp-minio-console.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mp-minio-console.loadbalancer.server.port=9001"
 
+  # One-shot: creates the bucket and sets it public-read, then exits.
+  # Idempotent — safe to run on every `docker compose up`.
   minio-init:
     image: quay.io/minio/aistor/mc:latest
-    depends_on:
-      - minio
     entrypoint: >
       /bin/sh -c "
-      until mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do sleep 1; done;
+      until mc alias set local http://minio:9000 app ${MINIO_ROOT_PASSWORD}; do sleep 1; done;
       mc mb --ignore-existing local/multi-purpose-uploads;
       mc anonymous set download local/multi-purpose-uploads;
       "
-    networks:
-      - internal
+    depends_on:
+      - minio
+    networks: [default]
 
   api:
     build: ./apps/api
+    container_name: mp-api
     restart: unless-stopped
     env_file:
-      - ./apps/api/.env.production
+      - ./apps/api/.env
     environment:
-      DATABASE_URL: postgres://app:${POSTGRES_PASSWORD}@db:5432/multi_purpose
+      # Override the .env file's host-dev values with container-network
+      # hostnames — everything else (SESSION_SECRET, GOOGLE_CLIENT_ID/SECRET)
+      # still comes from the env_file above. FRONTEND_URL and
+      # MINIO_PUBLIC_URL stay as localhost: both are URLs the *browser*
+      # follows (OAuth redirect, avatar image src), not container-to-container
+      # calls, so they must stay on the published host port.
+      DATABASE_URL: postgres://postgre:${MP_DB_PASSWORD:?set MP_DB_PASSWORD in .env}@postgres:5432/multi_purpose
       MINIO_ENDPOINT: minio
       MINIO_PORT: "9000"
-    # No published port — reachable only as http://api:4000 inside the
-    # compose network (APPROACH.md §6/§17).
+    networks: [default, backend-net]
     depends_on:
-      - db
       - minio
-    networks:
-      - internal
 
   web:
     build:
@@ -68,29 +71,27 @@ services:
         # resolved into .next/routes-manifest.json during `next build`, not
         # read fresh at container start.
         API_URL: http://api:4000
+    container_name: mp-web
     restart: unless-stopped
     environment:
-      # Read at runtime for SSR direct calls (APPROACH.md §6).
+      # Read at runtime for SSR direct calls (APPROACH.md §6), which go
+      # container-to-container, not through localhost.
       API_URL: http://api:4000
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`sanattudu.tech`)"
-      - "traefik.http.routers.web.entrypoints=websecure"
-      - "traefik.http.routers.web.tls.certresolver=letsencrypt"
-      - "traefik.http.services.web.loadbalancer.server.port=3000"
+      HOSTNAME: "0.0.0.0"
+    networks: [default]
     depends_on:
       - api
-    networks:
-      - internal
-      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mp-web.rule=Host(`multi-purpose.sanattudu.tech`)"
+      - "traefik.http.routers.mp-web.entrypoints=websecure"
+      - "traefik.http.routers.mp-web.tls=true"
+      - "traefik.http.routers.mp-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mp-web.loadbalancer.server.port=3000"
 
 networks:
-  internal: {}
-  # Pre-existing network Traefik and the VPS's other apps already use —
-  # created outside this compose file (`docker network create traefik-network`).
-  traefik-network:
+  backend-net:
     external: true
 
 volumes:
-  db-data:
   minio-data:
