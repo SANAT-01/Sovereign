@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Dark glassmorphic theme is the final/primary look for this app
+   (visual-style.md) — base background + text colors live here so every
+   page inherits them without repeating dark: variants everywhere. */
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply min-h-screen text-slate-100 antialiased;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(45, 212, 160, 0.12), transparent 45%),
+    radial-gradient(circle at 85% 0%, rgba(99, 102, 241, 0.10), transparent 40%),
+    #0b1210;
+  background-attachment: fixed;
+}
