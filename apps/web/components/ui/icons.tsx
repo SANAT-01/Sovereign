@@ -190,6 +190,78 @@ export function PlusIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function SearchIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </Icon>
+  );
+}
+
+export function ArrowLeftIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    </Icon>
+  );
+}
+
+export function HeadingIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4 6v12M4 12h10M14 6v12M20 18v-6a2 2 0 0 0-4 0v1" />
+    </Icon>
+  );
+}
+
+export function BulletListIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="4" cy="6" r="1" />
+      <circle cx="4" cy="12" r="1" />
+      <circle cx="4" cy="18" r="1" />
+      <path d="M9 6h11M9 12h11M9 18h11" />
+    </Icon>
+  );
+}
+
+export function OrderedListIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <path d="M4 4h1v4M4 13h2l-2 2.5h2M4 20.5h2" />
+    </Icon>
+  );
+}
+
+export function QuoteIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M7 7h4v4a4 4 0 0 1-4 4v-2a2 2 0 0 0 2-2H7z" />
+      <path d="M15 7h4v4a4 4 0 0 1-4 4v-2a2 2 0 0 0 2-2h-2z" />
+    </Icon>
+  );
+}
+
+export function LinkIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1 1" />
+      <path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 0 0 7.07 7.07l1-1" />
+    </Icon>
+  );
+}
+
+export function ClearFormatIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4 7V4h16v3M9 20h6M12 4v16" />
+      <path d="m3 3 18 18" />
+    </Icon>
+  );
+}
+
 export function GoogleIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" width={18} height={18} {...props}>

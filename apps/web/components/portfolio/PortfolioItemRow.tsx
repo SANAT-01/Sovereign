@@ -41,16 +41,18 @@ export function PortfolioItemRow({
 
   return (
     <div className="border-b border-white/[0.06] px-4 py-3 last:border-b-0">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-accent">
           <Icon width={20} height={20} />
         </div>
+        {/* Label/value get the full row to themselves, never squeezed by
+            the action buttons — those wrap onto their own line below. */}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-white">{item.label}</p>
-          <p className="truncate text-sm text-slate-400">{item.value || "—"}</p>
-          {item.note && <p className="truncate text-xs text-slate-500">{item.note}</p>}
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+          <p className="break-words text-sm font-medium text-white">{item.label}</p>
+          <p className="break-words text-sm text-slate-400">{item.value || "—"}</p>
+          {item.note && <p className="break-words text-xs text-slate-500">{item.note}</p>}
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={() => onTogglePin(item)}
@@ -112,6 +114,7 @@ export function PortfolioItemRow({
               </Button>
             </a>
           )}
+          </div>
         </div>
       </div>
 

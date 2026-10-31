@@ -266,3 +266,23 @@ There is **one Dockerfile per app, and it only builds the production image** —
   - `web`: the only service with a public Traefik route (`sanattudu.tech`, TLS via Let's Encrypt, Docker-label-driven per §3).
   - All services join the VPS's existing external `traefik-network` (`docker network` already used by other apps on the box) in addition to this project's own internal network — internal-only services don't need the external network at all.
 - Images are tagged and built via `docker compose -f docker-compose.prod.yml build`; deploying means pulling/building on the VPS and `docker compose -f docker-compose.prod.yml up -d`. No CI/registry push pipeline yet — build directly on the VPS until that becomes a real bottleneck (§15).
+
+## 18. Notes Module Design
+
+Unlike Progress Tracker (§10) and Portfolio (§9), a note doesn't need a generic items/categories model — it's just a title and some rich-text content. One table:
+
+```
+notes (
+  id, user_id, title, content, created_at, updated_at
+)
+```
+
+- **Editor**: Tiptap (React rich-text library built on ProseMirror), not raw `contentEditable` + `document.execCommand`. The design mockup used `execCommand` because it's zero-dependency for a quick demo, but it's a deprecated browser API with real cross-browser inconsistencies (nested lists, undo/redo, Safari quirks) — not something to build the real editor on. Tiptap outputs the same plain HTML `execCommand` would have, so the storage model doesn't change, just what produces it.
+- **Sanitization**: `content` is rendered back via `dangerouslySetInnerHTML`, so every save runs through `sanitize-html` server-side first (strip `<script>`, event-handler attributes, etc.) — a new concern this module introduces, since no other module stores and re-renders arbitrary HTML.
+- **List endpoint stays lightweight**: `GET /notes` returns `id`, `title`, a server-computed plain-text snippet (HTML stripped, truncated ~140 chars), and `updated_at` — not full content for every note just to render previews. Full `content` is fetched only via `GET /notes/:id` when a note is opened.
+- **Autosave + manual save, same endpoint**: `PATCH /notes/:id` is called both by a ~1.2s debounce after typing stops (matching the mockup) and by an explicit Save button that bypasses the debounce — one code path, two triggers.
+- **New note is a real row immediately**: clicking "+ New note" calls `POST /notes` right away (empty title/content) rather than holding a local-only draft, so autosave always has a real id to target from the first keystroke.
+- **No conflict resolution** — last-write-wins on `PATCH`. Fine for single-user, single-device; revisit only if this ever needs simultaneous multi-device editing, which isn't the ask.
+- **Search is client-side** — substring filter over the already-loaded title+snippet list. No Postgres full-text search infrastructure; not worth it at personal-notes volume, easy to add later if it ever matters.
+- **Delete** is included (standard CRUD hygiene) even though the mockup didn't show it — a small trash affordance on hover in the list.
+- **Mobile layout**: the list+editor two-pane layout collapses to one pane at a time below `lg` (same breakpoint `Sidebar.tsx` already uses for its own off-canvas pattern) — list view by default, tapping a note switches to a full-width editor view with a "← Notes" back control, rather than squeezing both panes side by side on a phone.
