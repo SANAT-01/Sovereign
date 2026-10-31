@@ -22,11 +22,17 @@ services:
       - "traefik.http.routers.mp-minio-api.entrypoints=websecure"
       - "traefik.http.routers.mp-minio-api.tls=true"
       - "traefik.http.routers.mp-minio-api.tls.certresolver=letsencrypt"
+      # Explicit router->service link required — this container defines two
+      # services (api + console), so Traefik can't auto-link either router
+      # without this (it logs "cannot be linked automatically with multiple
+      # Services" and silently drops both routers).
+      - "traefik.http.routers.mp-minio-api.service=mp-minio-api"
       - "traefik.http.services.mp-minio-api.loadbalancer.server.port=9000"
       - "traefik.http.routers.mp-minio-console.rule=Host(`storage-console.sanattudu.tech`)"
       - "traefik.http.routers.mp-minio-console.entrypoints=websecure"
       - "traefik.http.routers.mp-minio-console.tls=true"
       - "traefik.http.routers.mp-minio-console.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.mp-minio-console.service=mp-minio-console"
       - "traefik.http.services.mp-minio-console.loadbalancer.server.port=9001"
 
   # One-shot: creates the bucket and sets it public-read, then exits.
