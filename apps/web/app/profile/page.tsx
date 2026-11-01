@@ -2,7 +2,12 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/Card";
 import { AvatarUploadForm } from "@/components/AvatarUploadForm";
-import { getCurrentUser } from "@/lib/api";
+import { GeminiApiKeyForm } from "@/components/GeminiApiKeyForm";
+import { getCurrentUser, ssrGet } from "@/lib/api";
+
+interface ProfileResponse {
+  hasGeminiApiKey: boolean;
+}
 
 export default async function ProfilePage() {
   // Same SSR auth pattern as the dashboard (APPROACH.md §6) — direct
@@ -12,6 +17,8 @@ export default async function ProfilePage() {
   if (!user) {
     redirect("/login");
   }
+
+  const profile = await ssrGet<ProfileResponse>("/profile");
 
   return (
     <AppShell>
@@ -38,6 +45,17 @@ export default async function ProfilePage() {
               <dd className="text-white">{user.email}</dd>
             </div>
           </dl>
+        </Card>
+
+        <Card variant="glass" className="mt-4 p-6">
+          <p className="text-sm font-medium text-accent">Assistant (Gemini API key)</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Your own Gemini API key, used only to answer your questions on the Assistant page — never shown again
+            once saved, and never used for anything but your own requests.
+          </p>
+          <div className="mt-4">
+            <GeminiApiKeyForm initialHasKey={profile?.hasGeminiApiKey ?? false} />
+          </div>
         </Card>
       </main>
     </AppShell>

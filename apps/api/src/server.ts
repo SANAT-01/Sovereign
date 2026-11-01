@@ -8,6 +8,7 @@ import notesRoutes from './modules/notes/routes.js';
 import progressRoutes from './modules/progress/routes.js';
 import portfolioRoutes from './modules/portfolio/routes.js';
 import profileRoutes from './modules/profile/routes.js';
+import assistantRoutes from './modules/assistant/routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { pool } from './db/client.js';
 
@@ -45,6 +46,7 @@ export function createServer() {
   app.use(progressRoutes);
   app.use(portfolioRoutes);
   app.use(profileRoutes);
+  app.use(assistantRoutes);
 
   // Error handler must be registered last, after all routers.
   app.use(errorHandler);

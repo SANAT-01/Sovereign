@@ -5,6 +5,7 @@ import { getCurrentUser, ssrGet } from "@/lib/api";
 import type { ProgressItem, ProgressDashboard, ProgressChartData } from "@/lib/progress-types";
 import { ProgressBoard } from "@/components/progress/ProgressBoard";
 import { ChartsSection } from "@/components/progress/ChartsSection";
+import { AttentionRow } from "@/components/progress/AttentionRow";
 
 export default async function ProgressPage() {
   // SSR auth check, same pattern as the dashboard/profile pages (APPROACH.md §6).
@@ -45,33 +46,60 @@ export default async function ProgressPage() {
               been tracked yet. Add items below.
             </p>
           ) : (
-            <ul className="space-y-1.5 text-sm text-slate-200">
+            <div className="space-y-2">
               {dashboard.dailyAtRisk.map((h) => (
-                <li key={h.id}>
-                  ⚠️ &quot;{h.title}&quot; not done today
-                  {h.streak && h.streak > 0 ? ` — ${h.streak} day streak at risk` : ""}
-                </li>
+                <AttentionRow
+                  key={h.id}
+                  icon="⚠️"
+                  title={h.title}
+                  category={h.type}
+                  description={h.data?.description as string | undefined}
+                  reason={h.streak && h.streak > 0 ? `Not done today — ${h.streak} day streak at risk` : "Not done today"}
+                />
               ))}
               {dashboard.staleStudyTopics.map((t) => (
-                <li key={t.id}>
-                  📖 &quot;{t.title}&quot; ({t.planTitle}){" "}
-                  {t.lastTouchedAt ? "hasn't been touched in a few days" : "has never been touched"}
-                </li>
+                <AttentionRow
+                  key={t.id}
+                  icon="📖"
+                  title={t.title}
+                  category={`Study Plan · ${t.planTitle}`}
+                  reason={t.lastTouchedAt ? "Hasn't been touched in a few days" : "Never been touched"}
+                />
               ))}
               {dashboard.dueSoon.map((item) => (
-                <li key={item.id}>
-                  📅 &quot;{item.title}&quot; coming up
-                  {item.due_at &&
-                    ` on ${new Date(item.due_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}
-                </li>
+                <AttentionRow
+                  key={item.id}
+                  icon="📅"
+                  title={item.title}
+                  category={item.type}
+                  description={item.data?.description as string | undefined}
+                  reason="Coming up"
+                  dueAt={item.due_at}
+                />
               ))}
               {dashboard.staleInterviewsOrOther.map((item) => (
-                <li key={item.id}>💼 No update on &quot;{item.title}&quot; in 7+ days</li>
+                <AttentionRow
+                  key={item.id}
+                  icon="💼"
+                  title={item.title}
+                  category={item.type}
+                  description={item.data?.description as string | undefined}
+                  reason="No update in 7+ days"
+                  dueAt={item.due_at}
+                />
               ))}
               {dashboard.openOther.slice(0, 5).map((item) => (
-                <li key={item.id}>📝 &quot;{item.title}&quot; is still open</li>
+                <AttentionRow
+                  key={item.id}
+                  icon="📝"
+                  title={item.title}
+                  category={item.type}
+                  description={item.data?.description as string | undefined}
+                  reason="Still open"
+                  dueAt={item.due_at}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </Card>
 

@@ -36,3 +36,11 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS home_widgets JSONB NOT NULL DEFAULT '
 -- type, user-customizable from the UI, persisted so it's remembered
 -- across visits/devices rather than resetting every page load.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS progress_chart_prefs JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- The user's own Gemini API key for the Assistant module (APPROACH.md
+-- §19) — AES-256-GCM encrypted (lib/crypto.ts) before it ever reaches
+-- this column, decrypted only in-memory for the duration of one Gemini
+-- call. Never serialized back to the client as anything but a boolean
+-- "is one set" (users/repository.ts's User type omits this column; see
+-- profile/service.ts).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gemini_api_key_encrypted TEXT;

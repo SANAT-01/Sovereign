@@ -13,8 +13,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.get('/profile', requireAuth, async (req, res, next) => {
   try {
     const requester = req.user as User;
-    const user = await service.getProfile(requester.id);
-    res.json({ user });
+    res.json(await service.getProfile(requester.id));
   } catch (err) {
     next(err);
   }
@@ -40,6 +39,28 @@ router.patch('/profile/home-widgets', requireAuth, async (req, res, next) => {
     const requester = req.user as User;
     const user = await service.updateHomeWidgets(requester.id, widgets);
     res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const geminiKeySchema = z.object({ apiKey: z.string().min(1) });
+router.patch('/profile/gemini-key', requireAuth, async (req, res, next) => {
+  try {
+    const { apiKey } = geminiKeySchema.parse(req.body);
+    const requester = req.user as User;
+    await service.setGeminiApiKey(requester.id, apiKey);
+    res.json({ hasGeminiApiKey: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/profile/gemini-key', requireAuth, async (req, res, next) => {
+  try {
+    const requester = req.user as User;
+    await service.clearGeminiApiKey(requester.id);
+    res.json({ hasGeminiApiKey: false });
   } catch (err) {
     next(err);
   }

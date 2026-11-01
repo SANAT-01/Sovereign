@@ -6,13 +6,13 @@ import { Button } from "../ui/Button";
 import { EditIcon, TrashIcon } from "../ui/icons";
 import type { ProgressItem, InterviewStage, Topic } from "@/lib/progress-types";
 
-const STAGES: { value: InterviewStage; label: string }[] = [
-  { value: "applied", label: "Applied" },
-  { value: "referral_asked", label: "Referral" },
-  { value: "interview", label: "Interview" },
-  { value: "pending", label: "Pending" },
-  { value: "accepted", label: "Accepted" },
-  { value: "rejected", label: "Rejected" },
+const STAGES: { value: InterviewStage; label: string; badge: string }[] = [
+  { value: "applied", label: "Applied", badge: "bg-slate-500/20 text-slate-300" },
+  { value: "referral_asked", label: "Referral", badge: "bg-sky-500/20 text-sky-300" },
+  { value: "interview", label: "Interview", badge: "bg-accent/20 text-accent" },
+  { value: "pending", label: "Pending", badge: "bg-amber-500/20 text-amber-300" },
+  { value: "accepted", label: "Accepted", badge: "bg-emerald-500/20 text-emerald-300" },
+  { value: "rejected", label: "Rejected", badge: "bg-red-500/20 text-red-300" },
 ];
 
 function daysUntil(dueAt: string): number {
@@ -279,59 +279,96 @@ export function ItemCard({
     const stage = (item.data.stage as InterviewStage) ?? "applied";
     const coverage = (item.data.coveragePercent as number) ?? 0;
     const terminal = stage === "accepted" || stage === "rejected";
+    const stageMeta = STAGES.find((s) => s.value === stage)!;
+    const daysLeft = item.due_at ? daysUntil(item.due_at) : null;
+    const urgent = !terminal && daysLeft !== null && daysLeft <= 1;
 
     return (
-      <Card variant="glass" className="p-4">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-white">
-            {company}
-            {role ? ` — ${role}` : ""}
-          </p>
-          {editButton}
-              {deleteButton}
+      <Card
+        variant="glass"
+        className={`p-4 ${urgent ? "ring-1 ring-amber-400/40 border-amber-400/30" : ""}`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-white">
+                {company}
+                {role ? ` — ${role}` : ""}
+              </p>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${stageMeta.badge}`}>
+                {stageMeta.label}
+              </span>
+            </div>
+            {item.due_at && (
+              <p className={`mt-1 text-xs ${urgent ? "text-amber-300" : "text-slate-400"}`}>
+                {daysLeft !== null && daysLeft < 0
+                  ? "Interview date passed"
+                  : daysLeft === 0
+                    ? "Interview is today"
+                    : `Interview in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
+              </p>
+            )}
+            {jdUrl && (
+              <a
+                href={jdUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-xs text-accent underline-offset-2 hover:underline"
+              >
+                View job description ↗
+              </a>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {editButton}
+            {deleteButton}
+          </div>
         </div>
-        {jdUrl && (
-          <a
-            href={jdUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-0.5 inline-block text-xs text-accent underline-offset-2 hover:underline"
-          >
-            View job description ↗
-          </a>
-        )}
-        {item.due_at && !terminal && (
-          <p className="mt-0.5 text-xs text-slate-400">
-            {(() => {
-              const d = daysUntil(item.due_at);
-              return d < 0 ? "Interview date passed" : d === 0 ? "Interview is today" : `Interview in ${d} day${d === 1 ? "" : "s"}`;
-            })()}
-          </p>
-        )}
 
-        {/* Stage stepper */}
-        <div className="mt-3 flex flex-wrap gap-1">
-          {STAGES.filter((s) => s.value !== "accepted" && s.value !== "rejected").map((s) => {
+        {descriptionBlock}
+
+        {/* Visual stepper — dots connected by a line, not same-weight
+            buttons, so progress through the pipeline actually reads as
+            progress. */}
+        <div className="mt-4 flex items-center">
+          {STAGES.filter((s) => s.value !== "accepted" && s.value !== "rejected").map((s, i, arr) => {
             const idx = STAGES.findIndex((x) => x.value === s.value);
             const currentIdx = STAGES.findIndex((x) => x.value === stage);
-            const reached = currentIdx >= idx || terminal;
+            const passed = currentIdx > idx || terminal;
+            const current = stage === s.value;
             return (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => onUpdateInterview(item, { stage: s.value })}
-                className={`flex-1 rounded-full py-1 text-center text-[11px] font-medium transition-colors ${
-                  stage === s.value ? "bg-accent text-surface" : reached ? "bg-accent/20 text-accent" : "bg-white/5 text-slate-400"
-                }`}
-              >
-                {s.label}
-              </button>
+              <div key={s.value} className="flex flex-1 items-center last:flex-none">
+                <button
+                  type="button"
+                  onClick={() => onUpdateInterview(item, { stage: s.value })}
+                  title={s.label}
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold transition-colors ${
+                    current
+                      ? "bg-accent text-surface"
+                      : passed
+                        ? "bg-accent/30 text-accent"
+                        : "bg-white/10 text-slate-500 hover:bg-white/15"
+                  }`}
+                >
+                  {passed && !current ? "✓" : i + 1}
+                </button>
+                {i < arr.length - 1 && (
+                  <div className={`h-0.5 flex-1 ${passed ? "bg-accent/40" : "bg-white/10"}`} />
+                )}
+              </div>
             );
           })}
         </div>
+        <div className="mt-1.5 flex justify-between text-[10px] text-slate-500">
+          {STAGES.filter((s) => s.value !== "accepted" && s.value !== "rejected").map((s) => (
+            <span key={s.value} className="w-6 text-center first:-ml-1 last:-mr-1">
+              {s.label}
+            </span>
+          ))}
+        </div>
 
         {terminal ? (
-          <p className={`mt-2 text-xs font-medium ${stage === "accepted" ? "text-accent" : "text-red-400"}`}>
+          <p className={`mt-3 text-xs font-medium ${stage === "accepted" ? "text-emerald-300" : "text-red-300"}`}>
             {stage === "accepted" ? "Accepted 🎉" : "Rejected"}
           </p>
         ) : (
@@ -363,7 +400,6 @@ export function ItemCard({
             />
           </div>
         )}
-        {descriptionBlock}
         {editForm}
       </Card>
     );

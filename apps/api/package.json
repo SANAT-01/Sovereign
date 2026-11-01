@@ -11,6 +11,7 @@
     "migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.32.0",
     "connect-pg-simple": "^10.0.0",
     "dotenv": "^18.0.9",
     "express": "^4.21.2",

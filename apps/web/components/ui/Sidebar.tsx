@@ -11,6 +11,7 @@ import {
   TargetIcon,
   BriefcaseIcon,
   UserIcon,
+  ChatIcon,
   CloseIcon,
 } from "./icons";
 
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/notes", label: "Notes", icon: NotesIcon },
   { href: "/progress", label: "Progress", icon: TargetIcon },
   { href: "/portfolio", label: "Portfolio", icon: BriefcaseIcon },
+  { href: "/assistant", label: "Assistant", icon: ChatIcon },
   { href: "/profile", label: "Profile", icon: UserIcon },
 ];
 

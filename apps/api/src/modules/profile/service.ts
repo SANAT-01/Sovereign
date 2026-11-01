@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import { ValidationError } from '../../errors.js';
 import { uploadPublicFile } from '../../lib/storage.js';
+import { encryptSecret } from '../../lib/crypto.js';
 import * as usersRepository from '../users/repository.js';
 import type { User, AvatarUrls } from '../users/repository.js';
 
@@ -25,8 +26,29 @@ const VARIANT_SIZES: Record<keyof AvatarUrls, number> = {
 // "don't fabricate" rule to home widgets as to the progress dashboard).
 const AVAILABLE_WIDGETS = new Set(['progress']);
 
-export async function getProfile(userId: string): Promise<User | null> {
-  return usersRepository.findById(userId);
+// Explicit whitelist, not a spread-and-delete — `SELECT *` on the users
+// table also returns gemini_api_key_encrypted (APPROACH.md §19), which
+// must never reach a response. Rebuilding the object field-by-field means
+// a future column added to the table is excluded by default, not leaked
+// by default.
+function toPublicUser(user: User): User {
+  return {
+    id: user.id,
+    google_sub: user.google_sub,
+    email: user.email,
+    display_name: user.display_name,
+    avatar_urls: user.avatar_urls,
+    home_widgets: user.home_widgets,
+    progress_chart_prefs: user.progress_chart_prefs,
+    created_at: user.created_at,
+  };
+}
+
+export async function getProfile(userId: string) {
+  const user = await usersRepository.findById(userId);
+  if (!user) return { user: null, hasGeminiApiKey: false };
+  const hasGeminiApiKey = await usersRepository.hasGeminiApiKey(userId);
+  return { user: toPublicUser(user), hasGeminiApiKey };
 }
 
 export async function updateHomeWidgets(userId: string, widgets: string[]): Promise<User> {
@@ -34,7 +56,8 @@ export async function updateHomeWidgets(userId: string, widgets: string[]): Prom
   if (invalid.length > 0) {
     throw new ValidationError(`Unknown widget(s): ${invalid.join(', ')}`);
   }
-  return usersRepository.updateHomeWidgets(userId, widgets);
+  const user = await usersRepository.updateHomeWidgets(userId, widgets);
+  return toPublicUser(user);
 }
 
 export async function uploadAvatar(
@@ -67,5 +90,15 @@ export async function uploadAvatar(
   );
 
   const avatarUrls = Object.fromEntries(variantEntries) as unknown as AvatarUrls;
-  return usersRepository.updateAvatarUrls(userId, avatarUrls);
+  const user = await usersRepository.updateAvatarUrls(userId, avatarUrls);
+  return toPublicUser(user);
+}
+
+export async function setGeminiApiKey(userId: string, apiKey: string): Promise<void> {
+  if (!apiKey.trim()) throw new ValidationError('API key is required');
+  await usersRepository.setGeminiApiKeyEncrypted(userId, encryptSecret(apiKey.trim()));
+}
+
+export async function clearGeminiApiKey(userId: string): Promise<void> {
+  await usersRepository.setGeminiApiKeyEncrypted(userId, null);
 }
