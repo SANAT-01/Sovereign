@@ -25,6 +25,11 @@ CREATE TABLE IF NOT EXISTS progress_items (
 CREATE INDEX IF NOT EXISTS idx_progress_items_user_id ON progress_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_progress_items_user_type ON progress_items(user_id, type);
 
+-- Generic across every type, same philosophy as `status`/`due_at` — one
+-- column rather than a type-specific `data` key, so sorting/filtering by
+-- priority works the same for every item regardless of category.
+ALTER TABLE progress_items ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'medium'; -- low | medium | high
+
 -- Generic per-day completion log — usable by any type that wants a streak
 -- (today just `daily`, but keyed off item_id generically, not a
 -- habit-specific foreign key).

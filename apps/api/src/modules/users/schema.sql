@@ -26,10 +26,19 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_urls JSONB;
 
 -- Which module summaries show on the home screen (user-configurable —
 -- "there can be many different applications," so home is a curated
--- summary, not a fixed dashboard). JSONB array of module keys. Defaults
--- to just "progress" (the only module with a real summary right now) so
--- a fresh account still sees something useful without finding a toggle first.
-ALTER TABLE users ADD COLUMN IF NOT EXISTS home_widgets JSONB NOT NULL DEFAULT '["progress"]'::jsonb;
+-- summary, not a fixed dashboard). JSONB array of module keys. Now that
+-- every module has a real summary (expenses/notes/portfolio joined
+-- progress), defaults to all four so a fresh account sees the full
+-- overview without finding the toggle first.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS home_widgets JSONB NOT NULL DEFAULT '["progress", "expenses", "notes", "portfolio"]'::jsonb;
+
+-- One-time backfill: accounts created before expenses/notes/portfolio had
+-- summaries are still sitting on the old progress-only default. Only
+-- touches rows that exactly match that old default (never a row the user
+-- has actually customized via the toggle), so it's safe to leave this
+-- idempotent statement in place permanently rather than a one-off script.
+UPDATE users SET home_widgets = '["progress", "expenses", "notes", "portfolio"]'::jsonb
+  WHERE home_widgets = '["progress"]'::jsonb;
 
 -- Which chart type (bar/line/pie) each progress summary chart renders as
 -- (progress/service.ts's CHART_METRICS) — a map of metric key -> chart

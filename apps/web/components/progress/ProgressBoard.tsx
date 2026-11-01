@@ -4,7 +4,20 @@ import { useState } from "react";
 import { Button } from "../ui/Button";
 import { AddItemModal } from "./AddItemModal";
 import { ItemCard } from "./ItemCard";
-import type { ProgressItem, ItemType, InterviewStage, Topic } from "@/lib/progress-types";
+import type { ProgressItem, ItemType, ItemPriority, InterviewStage, Topic } from "@/lib/progress-types";
+
+const PRIORITY_RANK: Record<ItemPriority, number> = { high: 0, medium: 1, low: 2 };
+
+// Mirrors the backend's PRIORITY_ORDER (repository.ts) so an optimistic
+// client-side insert (new item, or an edited priority) lands in the same
+// position the next server fetch would give it, rather than just appending.
+function sortByPriority(its: ProgressItem[]): ProgressItem[] {
+  return [...its].sort((a, b) => {
+    const diff = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+    if (diff !== 0) return diff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
 
 // Fixed sections always shown (even empty, per the "don't fabricate
 // progress" rule — an empty section still distinguishes "nothing tracked
@@ -29,21 +42,27 @@ function sectionTitle(type: ItemType): string {
  * ItemCard with the widget matching its type.
  */
 export function ProgressBoard({ initialItems }: { initialItems: ProgressItem[] }) {
-  const [items, setItems] = useState(initialItems);
+  const [items, setItems] = useState(() => sortByPriority(initialItems));
   const [modalOpen, setModalOpen] = useState(false);
 
   function patchItem(id: string, patch: Partial<ProgressItem>) {
-    setItems((its) => its.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+    setItems((its) => sortByPriority(its.map((i) => (i.id === id ? { ...i, ...patch } : i))));
   }
 
-  async function handleCreate(input: { type: ItemType; title: string; dueAt?: string; data?: Record<string, unknown> }) {
+  async function handleCreate(input: {
+    type: ItemType;
+    title: string;
+    priority?: ItemPriority;
+    dueAt?: string;
+    data?: Record<string, unknown>;
+  }) {
     const res = await fetch("/api/progress/items", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     });
     const item = await res.json();
-    setItems((its) => [item, ...its]);
+    setItems((its) => sortByPriority([item, ...its]));
   }
 
   async function handleToggleDaily(item: ProgressItem) {
@@ -106,10 +125,19 @@ export function ProgressBoard({ initialItems }: { initialItems: ProgressItem[] }
 
   async function handleEdit(
     item: ProgressItem,
-    patch: { title?: string; dueAt?: string | null; company?: string; role?: string; jdUrl?: string; description?: string },
+    patch: {
+      title?: string;
+      priority?: ItemPriority;
+      dueAt?: string | null;
+      company?: string;
+      role?: string;
+      jdUrl?: string;
+      description?: string;
+    },
   ) {
     patchItem(item.id, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
       ...(patch.dueAt !== undefined ? { due_at: patch.dueAt } : {}),
       data: {
         ...item.data,

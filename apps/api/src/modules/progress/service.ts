@@ -1,10 +1,11 @@
 import { ValidationError, NotFoundError } from '../../errors.js';
 import * as repository from './repository.js';
 import * as usersRepository from '../users/repository.js';
-import type { ProgressItem, ItemType } from './repository.js';
+import type { ProgressItem, ItemType, ItemPriority } from './repository.js';
 
 const STALE_DAYS = 7; // generic item-level staleness (interview/other/custom categories); daily uses its own at-risk signal
 const DUE_SOON_DAYS = 3;
+const ITEM_PRIORITIES = ['low', 'medium', 'high'] as const;
 
 // The only types with a dedicated widget (ItemCard.tsx) and dedicated
 // dashboard signal below. Anything else is a user-defined category —
@@ -102,13 +103,16 @@ async function enrichItem(userId: string, item: ProgressItem) {
 
 export async function createItem(
   userId: string,
-  input: { type: ItemType; title: string; dueAt?: string; data?: Record<string, unknown> },
+  input: { type: ItemType; title: string; priority?: ItemPriority; dueAt?: string; data?: Record<string, unknown> },
 ) {
   if (!input.title.trim()) throw new ValidationError('Title is required');
 
   const type = input.type.trim();
   if (!type) throw new ValidationError('Type is required');
   if (type.length > 40) throw new ValidationError('Type must be 40 characters or fewer');
+  if (input.priority !== undefined && !ITEM_PRIORITIES.includes(input.priority)) {
+    throw new ValidationError('Priority must be low, medium, or high');
+  }
 
   const description = (input.data as { description?: string } | undefined)?.description;
   if (description !== undefined && description.length > 1000) {
@@ -140,6 +144,7 @@ export async function createItem(
   const item = await repository.createItem(userId, {
     type,
     title: input.title.trim(),
+    priority: input.priority,
     dueAt: input.dueAt,
     data: {
       ...input.data,
@@ -228,6 +233,7 @@ export async function editItem(
   itemId: string,
   patch: {
     title?: string;
+    priority?: ItemPriority;
     dueAt?: string | null;
     company?: string;
     role?: string;
@@ -237,6 +243,9 @@ export async function editItem(
 ) {
   if (patch.title !== undefined && !patch.title.trim()) {
     throw new ValidationError('Title cannot be empty');
+  }
+  if (patch.priority !== undefined && !ITEM_PRIORITIES.includes(patch.priority)) {
+    throw new ValidationError('Priority must be low, medium, or high');
   }
   if (patch.description !== undefined && patch.description.length > 1000) {
     throw new ValidationError('Description must be 1000 characters or fewer');
@@ -257,6 +266,7 @@ export async function editItem(
 
   const updated = await repository.updateItem(userId, itemId, {
     title: patch.title?.trim(),
+    priority: patch.priority,
     dueAt: patch.dueAt,
     dataPatch: {
       ...(patch.company !== undefined ? { company: patch.company.trim() } : {}),
@@ -305,7 +315,14 @@ export async function getDashboard(userId: string) {
 
   const openOther = items.filter((i) => !SPECIAL_TYPES.has(i.type) && i.status === 'active');
 
+  // Surfaced separately so the UI can show these at the very top, ahead of
+  // the generic staleness/due-soon buckets below — `items` is already
+  // priority-ordered (repository.ts's PRIORITY_ORDER), so this preserves
+  // that order rather than re-sorting.
+  const highPriority = items.filter((i) => i.priority === 'high' && i.status === 'active');
+
   return {
+    highPriority,
     dailyAtRisk,
     staleStudyTopics,
     dueSoon,

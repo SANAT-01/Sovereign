@@ -36,6 +36,7 @@ router.get('/progress/items', async (req, res, next) => {
 const createItemSchema = z.object({
   type: z.string(),
   title: z.string().min(1),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
   dueAt: z.string().optional(),
   data: z.record(z.unknown()).optional(),
 });
@@ -115,6 +116,7 @@ router.patch('/progress/items/:id/done', async (req, res, next) => {
 
 const editItemSchema = z.object({
   title: z.string().min(1).optional(),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
   dueAt: z.string().nullable().optional(),
   company: z.string().optional(),
   role: z.string().optional(),

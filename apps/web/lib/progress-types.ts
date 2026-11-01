@@ -7,6 +7,7 @@
 export type ItemType = string;
 export const SPECIAL_ITEM_TYPES = ["daily", "study_plan", "interview"] as const;
 export type ItemStatus = "active" | "done" | "cancelled";
+export type ItemPriority = "low" | "medium" | "high";
 
 export interface Topic {
   id: string;
@@ -22,6 +23,7 @@ export interface ProgressItem {
   type: ItemType;
   title: string;
   status: ItemStatus;
+  priority: ItemPriority;
   due_at: string | null;
   last_activity_at: string;
   data: Record<string, unknown>;
@@ -35,6 +37,7 @@ export interface ProgressItem {
 }
 
 export interface ProgressDashboard {
+  highPriority: ProgressItem[];
   dailyAtRisk: ProgressItem[];
   staleStudyTopics: (Topic & { planId: string; planTitle: string })[];
   dueSoon: ProgressItem[];

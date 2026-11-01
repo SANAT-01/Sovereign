@@ -8,6 +8,7 @@ import { db } from '../../db/client.js';
 // categories table needed (APPROACH.md §10's "only 1-2 tables" constraint).
 export type ItemType = string;
 export type ItemStatus = 'active' | 'done' | 'cancelled';
+export type ItemPriority = 'low' | 'medium' | 'high';
 
 export interface ProgressItem {
   id: string;
@@ -15,15 +16,20 @@ export interface ProgressItem {
   type: ItemType;
   title: string;
   status: ItemStatus;
+  priority: ItemPriority;
   due_at: Date | null;
   last_activity_at: Date;
   data: Record<string, unknown>;
   created_at: Date;
 }
 
+// Highest priority first, ties broken by newest — so a fresh high-priority
+// item doesn't get buried under older high-priority ones.
+const PRIORITY_ORDER = `CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END`;
+
 export async function listItems(userId: string): Promise<ProgressItem[]> {
   const result = await db.query<ProgressItem>(
-    'SELECT * FROM progress_items WHERE user_id = $1 ORDER BY created_at DESC',
+    `SELECT * FROM progress_items WHERE user_id = $1 ORDER BY ${PRIORITY_ORDER}, created_at DESC`,
     [userId],
   );
   return result.rows;
@@ -31,7 +37,7 @@ export async function listItems(userId: string): Promise<ProgressItem[]> {
 
 export async function listItemsByType(userId: string, type: ItemType): Promise<ProgressItem[]> {
   const result = await db.query<ProgressItem>(
-    'SELECT * FROM progress_items WHERE user_id = $1 AND type = $2 ORDER BY created_at DESC',
+    `SELECT * FROM progress_items WHERE user_id = $1 AND type = $2 ORDER BY ${PRIORITY_ORDER}, created_at DESC`,
     [userId, type],
   );
   return result.rows;
@@ -47,12 +53,12 @@ export async function getItem(userId: string, itemId: string): Promise<ProgressI
 
 export async function createItem(
   userId: string,
-  data: { type: ItemType; title: string; dueAt?: string | null; data?: Record<string, unknown> },
+  data: { type: ItemType; title: string; priority?: ItemPriority; dueAt?: string | null; data?: Record<string, unknown> },
 ): Promise<ProgressItem> {
   const result = await db.query<ProgressItem>(
-    `INSERT INTO progress_items (user_id, type, title, due_at, data)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [userId, data.type, data.title, data.dueAt ?? null, JSON.stringify(data.data ?? {})],
+    `INSERT INTO progress_items (user_id, type, title, priority, due_at, data)
+     VALUES ($1, $2, $3, COALESCE($4, 'medium'), $5, $6) RETURNING *`,
+    [userId, data.type, data.title, data.priority ?? null, data.dueAt ?? null, JSON.stringify(data.data ?? {})],
   );
   return result.rows[0];
 }
@@ -63,14 +69,21 @@ export async function createItem(
 export async function updateItem(
   userId: string,
   itemId: string,
-  patch: { title?: string; status?: ItemStatus; dueAt?: string | null; dataPatch?: Record<string, unknown> },
+  patch: {
+    title?: string;
+    status?: ItemStatus;
+    priority?: ItemPriority;
+    dueAt?: string | null;
+    dataPatch?: Record<string, unknown>;
+  },
 ): Promise<ProgressItem | null> {
   const result = await db.query<ProgressItem>(
     `UPDATE progress_items
      SET title = COALESCE($3, title),
          status = COALESCE($4, status),
-         due_at = CASE WHEN $5::boolean THEN $6 ELSE due_at END,
-         data = data || $7::jsonb,
+         priority = COALESCE($5, priority),
+         due_at = CASE WHEN $6::boolean THEN $7 ELSE due_at END,
+         data = data || $8::jsonb,
          last_activity_at = now()
      WHERE user_id = $1 AND id = $2
      RETURNING *`,
@@ -79,6 +92,7 @@ export async function updateItem(
       itemId,
       patch.title ?? null,
       patch.status ?? null,
+      patch.priority ?? null,
       patch.dueAt !== undefined, // explicit flag — dueAt can legitimately be set to null
       patch.dueAt ?? null,
       JSON.stringify(patch.dataPatch ?? {}),
@@ -150,7 +164,7 @@ export async function listStaleItems(userId: string, staleDays: number): Promise
     `SELECT * FROM progress_items
      WHERE user_id = $1 AND status = 'active'
        AND last_activity_at < now() - ($2 || ' days')::interval
-     ORDER BY last_activity_at
+     ORDER BY ${PRIORITY_ORDER}, last_activity_at
      LIMIT 10`,
     [userId, staleDays],
   );
@@ -166,7 +180,7 @@ export async function listDueSoonItems(userId: string, withinDays: number): Prom
     `SELECT * FROM progress_items
      WHERE user_id = $1 AND status = 'active' AND due_at IS NOT NULL
        AND due_at BETWEEN now() AND now() + ($2 || ' days')::interval
-     ORDER BY due_at`,
+     ORDER BY ${PRIORITY_ORDER}, due_at`,
     [userId, withinDays],
   );
   return result.rows;

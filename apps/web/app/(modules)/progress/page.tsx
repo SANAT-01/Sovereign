@@ -35,6 +35,29 @@ export default async function ProgressPage() {
         <p className="text-sm text-slate-400">Progress Tracker</p>
         <h1 className="text-2xl font-semibold text-white">What needs your attention</h1>
 
+        {/* High-priority items, across every type — surfaced above
+            everything else (including the generic attention summary) since
+            "high priority" is the user's own explicit signal, not a
+            derived staleness/due-date heuristic. */}
+        {dashboard && dashboard.highPriority.length > 0 && (
+          <Card variant="solid" className="mt-4 p-6 ring-1 ring-amber-400/30">
+            <p className="text-sm font-medium text-amber-300">🔥 High priority</p>
+            <div className="mt-3 space-y-2">
+              {dashboard.highPriority.map((item) => (
+                <AttentionRow
+                  key={item.id}
+                  icon="🔥"
+                  title={item.title}
+                  category={item.type}
+                  description={item.data?.description as string | undefined}
+                  reason="Marked high priority"
+                  dueAt={item.due_at}
+                />
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* The dashboard/summary — the actual feature (APPROACH.md §10), the
             first thing seen on opening this module. */}
         <Card variant="solid" className="mt-4 p-6">
@@ -62,7 +85,7 @@ export default async function ProgressPage() {
                   key={t.id}
                   icon="📖"
                   title={t.title}
-                  category={`Study Plan · ${t.planTitle}`}
+                  category="Study Plan"
                   reason={t.lastTouchedAt ? "Hasn't been touched in a few days" : "Never been touched"}
                 />
               ))}

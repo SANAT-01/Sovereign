@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 
 const AVAILABLE_MODULES = [
   { key: "progress", label: "Progress Tracker", ready: true },
-  { key: "expenses", label: "Expense Tracker", ready: false },
-  { key: "notes", label: "Notes", ready: false },
-  { key: "portfolio", label: "Portfolio", ready: false },
+  { key: "expenses", label: "Expense Tracker", ready: true },
+  { key: "notes", label: "Notes", ready: true },
+  { key: "portfolio", label: "Portfolio", ready: true },
 ];
 
 /**

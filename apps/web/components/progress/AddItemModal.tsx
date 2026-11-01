@@ -2,13 +2,19 @@
 
 import { useState } from "react";
 import { Button } from "../ui/Button";
-import type { ItemType } from "@/lib/progress-types";
+import type { ItemType, ItemPriority } from "@/lib/progress-types";
 
 const TYPE_OPTIONS: { value: ItemType; label: string; hint: string }[] = [
   { value: "daily", label: "Daily", hint: "A recurring habit — POTD, revision, mock interview prep, etc. Tracked as a streak + heatmap." },
   { value: "interview", label: "Interview", hint: "A job application — Applied → Referral → Interview → Outcome, plus a prep-coverage % once scheduled." },
   { value: "study_plan", label: "Study Plan", hint: "A syllabus (e.g. GATE prep) — add topics, see a % coverage bar." },
   { value: "other", label: "Other", hint: "Anything else — pick or name a category (or leave uncategorized), optionally with a due date." },
+];
+
+const PRIORITY_OPTIONS: { value: ItemPriority; label: string; className: string }[] = [
+  { value: "low", label: "Low", className: "border-slate-400/40 bg-slate-400/15 text-slate-300" },
+  { value: "medium", label: "Medium", className: "border-sky-400/40 bg-sky-400/15 text-sky-300" },
+  { value: "high", label: "High", className: "border-amber-400/40 bg-amber-400/15 text-amber-300" },
 ];
 
 export function AddItemModal({
@@ -19,7 +25,13 @@ export function AddItemModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (input: { type: ItemType; title: string; dueAt?: string; data?: Record<string, unknown> }) => Promise<void>;
+  onSubmit: (input: {
+    type: ItemType;
+    title: string;
+    priority?: ItemPriority;
+    dueAt?: string;
+    data?: Record<string, unknown>;
+  }) => Promise<void>;
   // Previously-used category names (derived from current items,
   // ProgressBoard.tsx) — quick-picks, not a fixed/managed list, since
   // categories are just whatever string you type as the type (full
@@ -28,6 +40,7 @@ export function AddItemModal({
 }) {
   const [type, setType] = useState<ItemType>("daily");
   const [title, setTitle] = useState("");
+  const [priority, setPriority] = useState<ItemPriority>("medium");
   const [dueAt, setDueAt] = useState("");
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
@@ -43,6 +56,7 @@ export function AddItemModal({
   function reset() {
     setType("daily");
     setTitle("");
+    setPriority("medium");
     setDueAt("");
     setCompany("");
     setRole("");
@@ -75,6 +89,7 @@ export function AddItemModal({
       await onSubmit({
         type: effectiveType,
         title: effectiveTitle.trim(),
+        priority,
         dueAt: dueAt || undefined,
         data: {
           ...(description.trim() ? { description: description.trim() } : {}),
@@ -115,6 +130,24 @@ export function AddItemModal({
             ))}
           </div>
           <p className="text-xs text-slate-400">{TYPE_OPTIONS.find((o) => o.value === type)?.hint}</p>
+
+          <div>
+            <label className="text-xs text-slate-400">Priority</label>
+            <div className="mt-1.5 flex gap-1.5">
+              {PRIORITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPriority(opt.value)}
+                  className={`flex-1 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                    priority === opt.value ? opt.className : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {type === "interview" ? (
             <>

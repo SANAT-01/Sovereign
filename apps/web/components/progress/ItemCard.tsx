@@ -4,7 +4,22 @@ import { useState } from "react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { EditIcon, TrashIcon } from "../ui/icons";
-import type { ProgressItem, InterviewStage, Topic } from "@/lib/progress-types";
+import type { ProgressItem, InterviewStage, Topic, ItemPriority } from "@/lib/progress-types";
+
+const PRIORITY_BADGES: Record<ItemPriority, { label: string; className: string }> = {
+  low: { label: "Low", className: "bg-slate-400/15 text-slate-300" },
+  medium: { label: "Medium", className: "bg-sky-400/15 text-sky-300" },
+  high: { label: "High", className: "bg-amber-400/15 text-amber-300" },
+};
+
+const PRIORITY_OPTIONS: ItemPriority[] = ["low", "medium", "high"];
+
+function PriorityBadge({ priority }: { priority: ItemPriority }) {
+  const meta = PRIORITY_BADGES[priority];
+  return (
+    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.className}`}>{meta.label}</span>
+  );
+}
 
 const STAGES: { value: InterviewStage; label: string; badge: string }[] = [
   { value: "applied", label: "Applied", badge: "bg-slate-500/20 text-slate-300" },
@@ -28,6 +43,7 @@ function toInputValue(iso: string | null, withTime: boolean): string {
 
 interface EditPatch {
   title?: string;
+  priority?: ItemPriority;
   dueAt?: string | null;
   company?: string;
   role?: string;
@@ -63,6 +79,7 @@ export function ItemCard({
   const description = item.data.description as string | undefined;
 
   const [editTitle, setEditTitle] = useState(item.type === "interview" ? company : item.title);
+  const [editPriority, setEditPriority] = useState<ItemPriority>(item.priority);
   const [editRole, setEditRole] = useState(role ?? "");
   const [editJdUrl, setEditJdUrl] = useState(jdUrl ?? "");
   const [editDescription, setEditDescription] = useState(description ?? "");
@@ -70,6 +87,7 @@ export function ItemCard({
 
   function startEdit() {
     setEditTitle(item.type === "interview" ? company : item.title);
+    setEditPriority(item.priority);
     setEditRole(role ?? "");
     setEditJdUrl(jdUrl ?? "");
     setEditDescription(description ?? "");
@@ -79,7 +97,7 @@ export function ItemCard({
 
   function saveEdit() {
     if (!editTitle.trim()) return;
-    const patch: EditPatch = { dueAt: editDueAt || null, description: editDescription.trim() };
+    const patch: EditPatch = { dueAt: editDueAt || null, description: editDescription.trim(), priority: editPriority };
     if (item.type === "interview") {
       patch.company = editTitle.trim();
       patch.role = editRole.trim();
@@ -150,6 +168,20 @@ export function ItemCard({
           className="w-full rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-accent"
         />
       )}
+      <div className="flex gap-1.5">
+        {PRIORITY_OPTIONS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setEditPriority(p)}
+            className={`flex-1 rounded-full px-2 py-1 text-[11px] transition-colors ${
+              editPriority === p ? PRIORITY_BADGES[p].className : "bg-white/5 text-slate-500 hover:bg-white/10"
+            }`}
+          >
+            {PRIORITY_BADGES[p].label}
+          </button>
+        ))}
+      </div>
       <textarea
         value={editDescription}
         onChange={(e) => setEditDescription(e.target.value)}
@@ -182,6 +214,7 @@ export function ItemCard({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="truncate text-sm font-medium text-white">{item.title}</p>
+              <PriorityBadge priority={item.priority} />
               {!item.doneToday && (
                 <span className="shrink-0 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">
                   Not done today
@@ -223,6 +256,7 @@ export function ItemCard({
       <Card variant="glass" className="p-4">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-white">{item.title}</p>
+          <PriorityBadge priority={item.priority} />
           {editButton}
               {deleteButton}
         </div>
@@ -298,6 +332,7 @@ export function ItemCard({
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${stageMeta.badge}`}>
                 {stageMeta.label}
               </span>
+              <PriorityBadge priority={item.priority} />
             </div>
             {item.due_at && (
               <p className={`mt-1 text-xs ${urgent ? "text-amber-300" : "text-slate-400"}`}>
@@ -412,6 +447,7 @@ export function ItemCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm text-white">{item.title}</p>
+            <PriorityBadge priority={item.priority} />
             {editButton}
               {deleteButton}
           </div>
