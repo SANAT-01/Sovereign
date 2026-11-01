@@ -212,8 +212,8 @@ export function ItemCard({
       >
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-medium text-white">{item.title}</p>
+            <p className="truncate text-sm font-medium text-white">{item.title}</p>
+            <div className="mt-1 flex items-center gap-2">
               <PriorityBadge priority={item.priority} />
               {!item.doneToday && (
                 <span className="shrink-0 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">
@@ -223,7 +223,7 @@ export function ItemCard({
               {editButton}
               {deleteButton}
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="mt-1 text-xs text-slate-400">
               {item.streak && item.streak > 0 ? `${item.streak} day streak` : "No streak yet"}
               {!item.doneToday && item.streak && item.streak > 0 ? " — at risk today" : ""}
             </p>
@@ -254,11 +254,11 @@ export function ItemCard({
     const pct = item.coveragePercent;
     return (
       <Card variant="glass" className="p-4">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-white">{item.title}</p>
+        <p className="truncate text-sm font-medium text-white">{item.title}</p>
+        <div className="mt-1 flex items-center gap-2">
           <PriorityBadge priority={item.priority} />
           {editButton}
-              {deleteButton}
+          {deleteButton}
         </div>
         <div className="mt-2">
           <div className="flex items-center justify-between text-xs text-slate-400">
@@ -324,11 +324,11 @@ export function ItemCard({
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-white">
-                {company}
-                {role ? ` — ${role}` : ""}
-              </p>
+            <p className="truncate text-sm font-medium text-white">
+              {company}
+              {role ? ` — ${role}` : ""}
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${stageMeta.badge}`}>
                 {stageMeta.label}
               </span>
@@ -445,11 +445,11 @@ export function ItemCard({
     <Card variant="glass" className="p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm text-white">{item.title}</p>
+          <p className="truncate text-sm text-white">{item.title}</p>
+          <div className="mt-1 flex items-center gap-2">
             <PriorityBadge priority={item.priority} />
             {editButton}
-              {deleteButton}
+            {deleteButton}
           </div>
           {item.due_at && (
             <p className="text-xs text-slate-400">
