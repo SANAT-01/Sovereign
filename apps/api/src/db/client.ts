@@ -1,7 +1,15 @@
-import { Pool, type QueryResultRow } from 'pg';
+import { Pool, types, type QueryResultRow } from 'pg';
 
 const DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgres://app:app@localhost:5432/multi_purpose';
+
+// pg's default DATE parser (oid 1082) returns a JS Date at local midnight,
+// which shifts the calendar day when later serialized to ISO depending on
+// the server's timezone vs UTC (found via expenses' `date` column —
+// APPROACH.md §20). A DATE has no time component, so there's nothing a
+// Date object adds here — keep it as the plain 'YYYY-MM-DD' string Postgres
+// already sends.
+types.setTypeParser(1082, (value) => value);
 
 export const pool = new Pool({ connectionString: DATABASE_URL });
 

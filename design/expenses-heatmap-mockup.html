@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Expense heatmap — design mockup</title>
+<style>
+  :root {
+    --surface: #0b1210;
+    --card: #0d3b36;
+    --accent: #2dd4a0;
+    --expense: #e36b5c;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-faint: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(circle at 15% -10%, rgba(45,212,160,0.1), transparent 45%),
+                radial-gradient(circle at 95% 5%, rgba(45,212,160,0.06), transparent 40%),
+                var(--surface);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    padding: 2rem 1.25rem 4rem;
+  }
+  .page { max-width: 980px; margin: 0 auto; }
+  .eyebrow { font-size: 0.8rem; color: var(--text-dim); margin: 0; }
+  h1 { font-size: 1.6rem; font-weight: 600; margin: 0.25rem 0 0.4rem; color: #fff; }
+  .sub { font-size: 0.85rem; color: var(--text-faint); margin: 0 0 1.25rem; max-width: 60ch; line-height: 1.5; }
+
+  .card {
+    background: rgba(13,59,54,0.45); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 1.5rem; padding: 1.25rem 1.5rem 1.5rem; backdrop-filter: blur(20px);
+  }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+  .card-title { font-size: 0.85rem; font-weight: 600; color: var(--accent); margin: 0; }
+  .card-hint { font-size: 0.72rem; color: var(--text-faint); margin: 0.15rem 0 1rem; }
+
+  .pillgroup { display: flex; gap: 0.25rem; background: rgba(255,255,255,0.05); border-radius: 999px; padding: 0.25rem; }
+  .pill {
+    border: none; background: none; color: var(--text-dim); font-size: 0.76rem; font-weight: 500;
+    padding: 0.35rem 0.75rem; border-radius: 999px; cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+  }
+  .pill.active { background: var(--accent); color: #06231c; }
+  .pill:not(.active):hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+  /* ---- heatmap grid ---- */
+  .heatmap-scroll { overflow-x: auto; padding-bottom: 0.25rem; }
+  .heatmap-inner { display: inline-flex; gap: 10px; }
+  .daylabels { display: grid; grid-template-rows: repeat(7, 12px); gap: 3px; padding-top: 18px; }
+  .daylabel { font-size: 9px; color: var(--text-faint); line-height: 12px; height: 12px; }
+  .weeks { display: grid; grid-auto-flow: column; gap: 3px; position: relative; }
+  .monthrow { grid-row: 1 / span 1; position: relative; height: 14px; }
+  .week-col { display: grid; grid-template-rows: repeat(7, 12px); gap: 3px; }
+  .cell {
+    width: 12px; height: 12px; border-radius: 3px; background: rgba(255,255,255,0.05);
+    cursor: pointer; transition: outline 0.08s ease;
+  }
+  .cell:hover, .cell.selected { outline: 1.5px solid #fff; outline-offset: 1px; }
+  .month-labels { display: grid; grid-auto-flow: column; position: relative; height: 14px; margin-left: 0; }
+  .month-label { font-size: 9px; color: var(--text-faint); position: absolute; top: 0; white-space: nowrap; }
+
+  .legend-row { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 0.75rem; font-size: 0.68rem; color: var(--text-faint); }
+  .legend-swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  .tooltip {
+    position: fixed; pointer-events: none; opacity: 0;
+    background: #0d3b36; border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 0.45rem 0.65rem; font-size: 0.72rem;
+    color: #fff; white-space: nowrap; transform: translate(-50%, -115%);
+    transition: opacity 0.1s ease; z-index: 20; box-shadow: 0 8px 24px -6px rgba(0,0,0,0.5);
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip .tt-label { color: var(--text-faint); font-size: 0.66rem; }
+
+  /* ---- detail panel (click target) ---- */
+  .detail-panel {
+    margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1.1rem;
+    display: none;
+  }
+  .detail-panel.show { display: block; }
+  .detail-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+  .detail-title { font-size: 0.85rem; font-weight: 600; color: #fff; margin: 0; }
+  .detail-total { font-size: 0.78rem; color: var(--expense); font-weight: 600; }
+  .detail-close { background: none; border: none; color: var(--text-faint); font-size: 0.72rem; cursor: pointer; text-decoration: underline; }
+  table.detail-table { width: 100%; margin-top: 0.75rem; border-collapse: collapse; font-size: 0.78rem; }
+  table.detail-table th { text-align: left; color: var(--text-faint); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 0 0.5rem 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  table.detail-table th.num { text-align: right; }
+  table.detail-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text); }
+  table.detail-table td.num { text-align: right; white-space: nowrap; }
+  table.detail-table td.debit { color: var(--expense); }
+  table.detail-table td.credit { color: var(--accent); }
+  .detail-empty { font-size: 0.8rem; color: var(--text-faint); padding: 0.75rem 0; }
+
+  .note {
+    margin-top: 2rem; padding: 1rem 1.2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 1rem; font-size: 0.78rem; color: var(--text-faint); line-height: 1.6;
+  }
+  .note b { color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="eyebrow">Expense Tracker</p>
+  <h1>Spend heatmap</h1>
+  <p class="sub">
+    Sample/illustrative numbers only. Hover a day for its total, click a day to see every
+    transaction in the panel below — same GitHub-contributions interaction, applied to spend.
+  </p>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <p class="card-title">Daily spend, last 12 months</p>
+        <p class="card-hint">Darker = more spent that day. Click any square for the full list.</p>
+      </div>
+      <div class="pillgroup" id="yearPills">
+        <button class="pill active" data-span="365">Last 12 months</button>
+        <button class="pill" data-span="90">Last 3 months</button>
+      </div>
+    </div>
+
+    <div class="heatmap-scroll">
+      <div class="heatmap-inner">
+        <div class="daylabels" id="dayLabels"></div>
+        <div>
+          <div class="month-labels" id="monthLabels"></div>
+          <div class="weeks" id="weeksGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend-row">
+      Less
+      <span class="legend-swatch" style="background: rgba(255,255,255,0.05)"></span>
+      <span class="legend-swatch" style="background: #3a2420"></span>
+      <span class="legend-swatch" style="background: #6b352c"></span>
+      <span class="legend-swatch" style="background: #a94638"></span>
+      <span class="legend-swatch" style="background: #e36b5c"></span>
+      More
+    </div>
+
+    <div class="tooltip" id="heatTooltip"></div>
+
+    <div class="detail-panel" id="detailPanel">
+      <div class="detail-head">
+        <p class="detail-title" id="detailTitle">—</p>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <span class="detail-total" id="detailTotal"></span>
+          <button class="detail-close" id="detailClose">Close</button>
+        </div>
+      </div>
+      <div id="detailBody"></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Design notes (not part of the chart itself):</b><br>
+    · Color is a <b>sequential ramp</b> in the app's warm "expense" hue (one hue, light→dark by
+    magnitude) — day-of-week labels + a value tooltip + a legend give the magnitude a second,
+    non-color reading, since color alone is never the only signal.<br>
+    · Empty/no-spend days use the same neutral <code>bg-white/5</code> treatment as empty states
+    elsewhere in the app, not a 5th ramp step — "no data" and "lowest spend" read differently.<br>
+    · <b>Click</b> opens the detail panel in place (no modal/navigation) and lists every transaction
+    for that exact day — in the real build this reuses the existing
+    <code>GET /expenses?from=X&amp;to=X&amp;pageSize=100</code> endpoint (same one the Transactions
+    table already calls), not a new endpoint — just a single-day filter.<br>
+    · The heatmap's own daily totals come from the same <code>GET /expenses/charts</code> aggregation
+    the other charts already use (<code>days[]</code>), so no new backend aggregation is needed either
+    — this chart and "Expense trend → Day" read the identical series.<br>
+    · "Last 12 months / Last 3 months" is a convenience toggle local to this chart — it doesn't
+    affect the global date-range filter bar above the other charts.<br>
+    · Becomes a real component (hand-rolled grid + Recharts-free, same as GitHub's own contribution
+    graph — there's no standard Recharts primitive for this shape) once approved.
+  </div>
+
+</div>
+
+<script>
+  const DAY_MS = 86400000;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  function isoDay(d) { return d.toISOString().slice(0, 10); }
+  function fmt(n) { return "₹" + Math.round(n).toLocaleString("en-IN"); }
+
+  // ---- Sample daily spend (illustrative) ----
+  const allDays = [];
+  (function () {
+    for (let i = 370; i >= 0; i--) {
+      const date = new Date(today.getTime() - i * DAY_MS);
+      const skip = Math.random() < 0.12; // some days with zero spend
+      const base = Math.random() < 0.06 ? 8000 + Math.random() * 20000 : 150 + Math.random() * 1800;
+      const expense = skip ? 0 : Math.round(base);
+      allDays.push({ date, expense });
+    }
+  })();
+
+  // Fictional sample transactions keyed by iso date, for the click-through panel.
+  const sampleMerchants = ["Zepto", "Swiggy", "Google Play", "Daalchini", "Razorpay", "Uber", "Local ATM"];
+  function sampleTransactionsFor(day) {
+    if (day.expense === 0) return [];
+    const count = day.expense > 6000 ? 1 : 1 + Math.floor(Math.random() * 3);
+    const amounts = [];
+    let remaining = day.expense;
+    for (let i = 0; i < count - 1; i++) {
+      const part = Math.round(remaining * (0.2 + Math.random() * 0.4));
+      amounts.push(part);
+      remaining -= part;
+    }
+    amounts.push(remaining);
+    let bal = 600000 + Math.round(Math.random() * 20000);
+    return amounts.map((amt, i) => {
+      bal -= amt;
+      return {
+        details: `Payment to ${sampleMerchants[Math.floor(Math.random() * sampleMerchants.length)]}`,
+        counterparty: sampleMerchants[Math.floor(Math.random() * sampleMerchants.length)],
+        debit: amt,
+        credit: null,
+        balance: bal,
+      };
+    });
+  }
+
+  // ---- Quantile-based bucketing (GitHub-style: 0 = empty, 1-4 by magnitude) ----
+  const nonZero = allDays.map((d) => d.expense).filter((v) => v > 0).sort((a, b) => a - b);
+  function quantile(p) {
+    if (!nonZero.length) return 0;
+    const idx = Math.min(nonZero.length - 1, Math.floor(p * nonZero.length));
+    return nonZero[idx];
+  }
+  const thresholds = [quantile(0.25), quantile(0.5), quantile(0.75)];
+  const RAMP = ["rgba(255,255,255,0.05)", "#3a2420", "#6b352c", "#a94638", "#e36b5c"];
+  function levelFor(expense) {
+    if (expense <= 0) return 0;
+    if (expense <= thresholds[0]) return 1;
+    if (expense <= thresholds[1]) return 2;
+    if (expense <= thresholds[2]) return 3;
+    return 4;
+  }
+
+  let spanDays = 365;
+  let selectedIso = null;
+
+  document.getElementById("yearPills").addEventListener("click", (e) => {
+    const btn = e.target.closest(".pill");
+    if (!btn) return;
+    document.querySelectorAll("#yearPills .pill").forEach((p) => p.classList.remove("active"));
+    btn.classList.add("active");
+    spanDays = Number(btn.dataset.span);
+    renderHeatmap();
+  });
+
+  document.getElementById("detailClose").addEventListener("click", () => {
+    selectedIso = null;
+    document.getElementById("detailPanel").classList.remove("show");
+    document.querySelectorAll(".cell.selected").forEach((c) => c.classList.remove("selected"));
+  });
+
+  function renderHeatmap() {
+    const days = allDays.slice(-spanDays);
+    // Pad to start on a Sunday so weeks line up into clean columns.
+    const firstDow = days[0].date.getDay();
+    const padded = [];
+    for (let i = 0; i < firstDow; i++) padded.push(null);
+    padded.push(...days);
+
+    const weeksGrid = document.getElementById("weeksGrid");
+    const dayLabels = document.getElementById("dayLabels");
+    const monthLabels = document.getElementById("monthLabels");
+    weeksGrid.innerHTML = "";
+    dayLabels.innerHTML = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+      .map((d, i) => `<div class="daylabel">${i % 2 === 1 ? d.slice(0,3) : ""}</div>`).join("");
+
+    const weekCount = Math.ceil(padded.length / 7);
+    const tooltip = document.getElementById("heatTooltip");
+    let lastMonth = null;
+    let monthHtml = "";
+
+    for (let w = 0; w < weekCount; w++) {
+      const col = document.createElement("div");
+      col.className = "week-col";
+      for (let d = 0; d < 7; d++) {
+        const day = padded[w * 7 + d];
+        const cell = document.createElement("div");
+        if (!day) {
+          cell.style.background = "transparent";
+          cell.style.cursor = "default";
+        } else {
+          const iso = isoDay(day.date);
+          cell.className = "cell" + (iso === selectedIso ? " selected" : "");
+          cell.style.background = RAMP[levelFor(day.expense)];
+          cell.dataset.iso = iso;
+          cell.dataset.expense = day.expense;
+
+          if (day.date.getDate() <= 7 && day.date.getMonth() !== lastMonth) {
+            lastMonth = day.date.getMonth();
+            monthHtml += `<div class="month-label" style="left:${w * 15}px">${day.date.toLocaleDateString(undefined, { month: "short" })}</div>`;
+          }
+
+          cell.addEventListener("mouseenter", (e) => {
+            tooltip.innerHTML = `<div class="tt-label">${day.date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>${day.expense > 0 ? fmt(day.expense) : "No spend"}`;
+            const rect = cell.getBoundingClientRect();
+            tooltip.style.left = rect.left + rect.width / 2 + "px";
+            tooltip.style.top = rect.top + "px";
+            tooltip.classList.add("show");
+          });
+          cell.addEventListener("mouseleave", () => tooltip.classList.remove("show"));
+          cell.addEventListener("click", () => selectDay(day, iso));
+        }
+        cell.style.gridRow = String(d + 1);
+        col.appendChild(cell);
+      }
+      weeksGrid.appendChild(col);
+    }
+    monthLabels.innerHTML = monthHtml;
+    monthLabels.style.width = weekCount * 15 + "px";
+  }
+
+  function selectDay(day, iso) {
+    selectedIso = iso;
+    document.querySelectorAll(".cell.selected").forEach((c) => c.classList.remove("selected"));
+    const cell = document.querySelector(`.cell[data-iso="${iso}"]`);
+    if (cell) cell.classList.add("selected");
+
+    const panel = document.getElementById("detailPanel");
+    const txns = sampleTransactionsFor(day);
+    document.getElementById("detailTitle").textContent =
+      "Transactions — " + day.date.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", year: "numeric" });
+    document.getElementById("detailTotal").textContent = day.expense > 0 ? `Total spent: ${fmt(day.expense)}` : "";
+
+    const body = document.getElementById("detailBody");
+    if (!txns.length) {
+      body.innerHTML = `<p class="detail-empty">No transactions on this day.</p>`;
+    } else {
+      body.innerHTML = `
+        <table class="detail-table">
+          <thead><tr>
+            <th>Details</th><th>Counterparty</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th>
+          </tr></thead>
+          <tbody>
+            ${txns.map((t) => `
+              <tr>
+                <td>${t.details}</td>
+                <td>${t.counterparty}</td>
+                <td class="num debit">${t.debit ? fmt(t.debit) : "—"}</td>
+                <td class="num credit">${t.credit ? fmt(t.credit) : "—"}</td>
+                <td class="num">${fmt(t.balance)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+    panel.classList.add("show");
+  }
+
+  renderHeatmap();
+</script>
+</body>
+</html>

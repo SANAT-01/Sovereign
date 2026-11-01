@@ -317,3 +317,26 @@ One continuous conversation per user (no multi-thread/conversation management in
 5. Persist the user message and the final assistant reply; return the reply.
 
 **UI**: a new "Assistant" page in the sidebar nav (own module, same pattern as every other module), not a floating cross-page widget — simpler to build and reason about, and matches how every other module here is just its own page. Profile page gets a new field to paste/update/remove the Gemini key.
+
+## 20. Expense Tracker Module Design
+
+Built in two phases — **Phase 1: import & log** (this pass), **Phase 2: charts** (next pass, after the log is in real use, same sequencing discipline as §1/§4).
+
+**The real insight driving this design**: a raw SBI bank statement export is a password-protected file whose transaction `Details` column is dense, inconsistent bank shorthand (`UPI/DR/807430986080/Zepto/YESB/ZEPTOONLIN/Payment`, `NEFT*KKBK0000958*CMS...*WINJIT TECHNOLO`) — not something worth writing a regex parser for in this app, since truncation and format vary by transaction type and bank. Instead, the user's own Claude session does that semantic extraction (name, UPI handle, merchant vs. person) into a clean intermediate sheet matching this app's template; this app only ever imports a file already in that shape. The app's job is the template + the import + the storage, not bank-statement parsing.
+
+**Data model** — one table:
+```
+expenses (
+  id, user_id, date, details, ref_no, debit, credit, balance,
+  counterparty_name, upi_id, merchant_name, created_at
+)
+```
+`debit`/`credit` are mutually exclusive per row (matches the source statement convention — one or the other, never both). `upi_id`/`merchant_name` are nullable — blank for a NEFT/cheque transaction or a person-to-person transfer respectively.
+
+**Template columns** (in order): `Date, Details, Ref No/Cheque No, Debit, Credit, Balance, Counterparty Name, UPI ID, Merchant Name`. `GET /expenses/template` downloads a `.xlsx` with just this header row plus one example row (so a user's own Claude session sees the expected shape, per the xlsx skill's "fill-in template needs an example row" convention) — generated on demand, not a static file, so column changes never need a file to be regenerated and re-deployed by hand.
+
+**Import** (`POST /expenses/import`, multipart `.xlsx`): parsed server-side, validated against the exact header row (fail the whole import with a clear error if headers don't match — silently guessing at a misaligned column is worse than refusing), rows inserted.
+
+**Dedupe on re-import**: skip a row if `(date, debit, credit, balance)` already exists for that user, rather than erroring the whole import or duplicating. Deliberately not `(date, ref_no, balance)` — `ref_no` is blank on most real UPI rows (confirmed from the actual reference statement), so it can't be part of the key. The running `balance` is effectively unique per transaction in practice, so `(date, debit, credit, balance)` together reliably identifies "the same transaction," letting a user re-export overlapping date ranges from the bank without creating duplicates.
+
+**Phase 1 scope**: template download, import, and a plain transaction table/log view. No charts yet — that's explicitly deferred to Phase 2, same as this project's standing "one module, fully working, before the next layer" discipline.
