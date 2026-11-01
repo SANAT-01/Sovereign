@@ -2,8 +2,9 @@ import sharp from 'sharp';
 import { ValidationError } from '../../errors.js';
 import { uploadPublicFile } from '../../lib/storage.js';
 import { encryptSecret } from '../../lib/crypto.js';
+import { MIN_PROD_INTERVAL_MINUTES } from '../../jobs/reminders.js';
 import * as usersRepository from '../users/repository.js';
-import type { User, AvatarUrls } from '../users/repository.js';
+import type { User, AvatarUrls, NotificationPrefs } from '../users/repository.js';
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB — cap on the original upload.
@@ -40,6 +41,7 @@ function toPublicUser(user: User): User {
     avatar_urls: user.avatar_urls,
     home_widgets: user.home_widgets,
     progress_chart_prefs: user.progress_chart_prefs,
+    notification_prefs: user.notification_prefs,
     created_at: user.created_at,
   };
 }
@@ -91,6 +93,25 @@ export async function uploadAvatar(
 
   const avatarUrls = Object.fromEntries(variantEntries) as unknown as AvatarUrls;
   const user = await usersRepository.updateAvatarUrls(userId, avatarUrls);
+  return toPublicUser(user);
+}
+
+export async function updateNotificationPrefs(
+  userId: string,
+  patch: Partial<NotificationPrefs>,
+): Promise<User> {
+  if (patch.intervalMinutes !== undefined) {
+    if (!Number.isInteger(patch.intervalMinutes) || patch.intervalMinutes < 1) {
+      throw new ValidationError('intervalMinutes must be a positive integer');
+    }
+    // Enforced here too (not just at send time in jobs/reminders.ts) so a
+    // saved value in production never even looks like it accepted
+    // something shorter than the floor (APPROACH.md §21).
+    if (process.env.NODE_ENV === 'production' && patch.intervalMinutes < MIN_PROD_INTERVAL_MINUTES) {
+      throw new ValidationError(`intervalMinutes must be at least ${MIN_PROD_INTERVAL_MINUTES} in production`);
+    }
+  }
+  const user = await usersRepository.updateNotificationPrefs(userId, patch);
   return toPublicUser(user);
 }
 

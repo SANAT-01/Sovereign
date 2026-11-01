@@ -7,6 +7,12 @@ export interface AvatarUrls {
   large: string;
 }
 
+export interface NotificationPrefs {
+  enabled: boolean;
+  intervalMinutes: number;
+  lastSentAt: string | null;
+}
+
 export interface User {
   id: string;
   google_sub: string;
@@ -15,6 +21,7 @@ export interface User {
   avatar_urls: AvatarUrls | null;
   home_widgets: string[];
   progress_chart_prefs: Record<string, string>;
+  notification_prefs: NotificationPrefs;
   created_at: Date;
 }
 
@@ -67,6 +74,32 @@ export async function updateChartPrefs(id: string, patch: Record<string, string>
     [id, JSON.stringify(patch)],
   );
   return result.rows[0];
+}
+
+// Merges into the existing object (jsonb ||), same reasoning as
+// updateChartPrefs — e.g. toggling `enabled` from Profile shouldn't
+// clobber a saved `intervalMinutes`.
+export async function updateNotificationPrefs(
+  id: string,
+  patch: Partial<NotificationPrefs>,
+): Promise<User> {
+  const result = await db.query<User>(
+    `UPDATE users SET notification_prefs = notification_prefs || $2::jsonb WHERE id = $1 RETURNING *`,
+    [id, JSON.stringify(patch)],
+  );
+  return result.rows[0];
+}
+
+// Scoped to exactly what the reminders job needs (id/email/prefs), not the
+// full User shape — this runs on a timer outside any request, so it
+// shouldn't carry gemini_api_key_encrypted-adjacent risk of over-fetching.
+export async function listUsersWithRemindersEnabled(): Promise<
+  { id: string; email: string; notification_prefs: NotificationPrefs }[]
+> {
+  const result = await db.query<{ id: string; email: string; notification_prefs: NotificationPrefs }>(
+    `SELECT id, email, notification_prefs FROM users WHERE notification_prefs->>'enabled' = 'true'`,
+  );
+  return result.rows;
 }
 
 // Deliberately NOT part of the `User` interface/`SELECT *` shape above —

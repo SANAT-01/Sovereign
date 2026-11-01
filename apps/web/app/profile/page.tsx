@@ -3,11 +3,21 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/Card";
 import { AvatarUploadForm } from "@/components/AvatarUploadForm";
 import { GeminiApiKeyForm } from "@/components/GeminiApiKeyForm";
+import { NotificationPrefsForm } from "@/components/NotificationPrefsForm";
 import { getCurrentUser, ssrGet } from "@/lib/api";
+
+interface NotificationPrefs {
+  enabled: boolean;
+  intervalMinutes: number;
+  lastSentAt: string | null;
+}
 
 interface ProfileResponse {
   hasGeminiApiKey: boolean;
+  user: { notification_prefs: NotificationPrefs } | null;
 }
+
+const DEFAULT_PREFS: NotificationPrefs = { enabled: false, intervalMinutes: 1440, lastSentAt: null };
 
 export default async function ProfilePage() {
   // Same SSR auth pattern as the dashboard (APPROACH.md §6) — direct
@@ -55,6 +65,17 @@ export default async function ProfilePage() {
           </p>
           <div className="mt-4">
             <GeminiApiKeyForm initialHasKey={profile?.hasGeminiApiKey ?? false} />
+          </div>
+        </Card>
+
+        <Card variant="glass" className="mt-4 p-6">
+          <p className="text-sm font-medium text-accent">Reminders</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Email digest of what&rsquo;s due soon or gone stale on your Progress Tracker dashboard, sent to{" "}
+            {user.email}.
+          </p>
+          <div className="mt-4">
+            <NotificationPrefsForm initialPrefs={profile?.user?.notification_prefs ?? DEFAULT_PREFS} />
           </div>
         </Card>
       </main>

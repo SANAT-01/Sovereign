@@ -44,6 +44,21 @@ router.patch('/profile/home-widgets', requireAuth, async (req, res, next) => {
   }
 });
 
+const notificationPrefsSchema = z.object({
+  enabled: z.boolean().optional(),
+  intervalMinutes: z.number().int().positive().optional(),
+});
+router.patch('/profile/notification-prefs', requireAuth, async (req, res, next) => {
+  try {
+    const patch = notificationPrefsSchema.parse(req.body);
+    const requester = req.user as User;
+    const user = await service.updateNotificationPrefs(requester.id, patch);
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+});
+
 const geminiKeySchema = z.object({ apiKey: z.string().min(1) });
 router.patch('/profile/gemini-key', requireAuth, async (req, res, next) => {
   try {

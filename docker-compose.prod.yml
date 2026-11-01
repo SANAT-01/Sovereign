@@ -49,6 +49,49 @@ services:
       - minio
     networks: [default]
 
+  # General-purpose event bus (APPROACH.md §22). Internal-only, like
+  # `api`/`minio` — never published, no Traefik labels; only `web` is
+  # ever public. Same dual-listener config as docker-compose.yml (kept
+  # identical across dev/prod to avoid drift) even though prod never
+  # actually needs the PLAINTEXT_HOST listener from outside this network.
+  kafka:
+    image: apache/kafka:4.4.0
+    container_name: mp-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      CLUSTER_ID: adVBECwg3z7WMiClGSwbrQ
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: CONTROLLER://:29093,PLAINTEXT_HOST://:9092,PLAINTEXT://:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT://kafka:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks: [default]
+
+  kafka-init:
+    image: apache/kafka:4.4.0
+    entrypoint: >
+      /bin/sh -c "
+      until /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --list; do sleep 1; done;
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --create --if-not-exists --topic reminders.send --partitions 3 --replication-factor 1;
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --create --if-not-exists --topic reminders.send.dlq --partitions 1 --replication-factor 1;
+      "
+    depends_on:
+      - kafka
+    networks: [default]
+
   api:
     build: ./apps/api
     container_name: mp-api
@@ -65,9 +108,11 @@ services:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/multi_purpose
       MINIO_ENDPOINT: minio
       MINIO_PORT: "9000"
+      KAFKA_BROKERS: kafka:19092
     networks: [default, backend-net]
     depends_on:
       - minio
+      - kafka
 
   web:
     build:
@@ -101,3 +146,4 @@ networks:
 
 volumes:
   minio-data:
+  kafka-data:

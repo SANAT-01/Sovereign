@@ -44,3 +44,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS progress_chart_prefs JSONB NOT NULL D
 -- "is one set" (users/repository.ts's User type omits this column; see
 -- profile/service.ts).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS gemini_api_key_encrypted TEXT;
+
+-- Email reminder preferences (APPROACH.md §21) — enabled/off, how often to
+-- check (minutes), and when the last digest actually went out. The 3-hour
+-- production floor on intervalMinutes is enforced in code (jobs/reminders.ts),
+-- not here, so dev/test can still use short intervals freely.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_prefs JSONB NOT NULL
+  DEFAULT '{"enabled": false, "intervalMinutes": 1440, "lastSentAt": null}'::jsonb;
