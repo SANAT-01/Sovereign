@@ -78,6 +78,54 @@ export async function getChartData(userId: string, query: ChartQuery) {
   };
 }
 
+export async function listMerchants(userId: string, type: repository.TransactionType): Promise<string[]> {
+  return repository.getDistinctMerchants(userId, type);
+}
+
+export const MAX_TREND_MERCHANTS = 5;
+
+export interface MerchantTrendQuery {
+  merchants: string[];
+  type: repository.TransactionType;
+  from?: string;
+  to?: string;
+}
+
+export async function getMerchantTrend(userId: string, query: MerchantTrendQuery) {
+  if (query.merchants.length === 0) {
+    throw new ValidationError('Select at least one merchant.');
+  }
+  if (query.merchants.length > MAX_TREND_MERCHANTS) {
+    throw new ValidationError(`Select up to ${MAX_TREND_MERCHANTS} merchants at a time.`);
+  }
+
+  const rows = await repository.getMerchantsDailySeries(userId, query.merchants, query.type, {
+    dateFrom: query.from,
+    dateTo: query.to,
+  });
+
+  // Pivot (date, merchant, amount) rows into one row per date with every
+  // selected merchant as its own key — the shape a multi-line chart wants.
+  const byDate = new Map<string, Record<string, number>>();
+  for (const r of rows) {
+    if (!byDate.has(r.date)) byDate.set(r.date, {});
+    byDate.get(r.date)![r.merchant] = r.amount;
+  }
+  const days = Array.from(byDate.keys())
+    .sort()
+    .map((date) => {
+      const amounts: Record<string, number> = {};
+      for (const m of query.merchants) amounts[m] = byDate.get(date)?.[m] ?? 0;
+      return { date, amounts };
+    });
+
+  const totals: Record<string, number> = {};
+  for (const m of query.merchants) totals[m] = 0;
+  for (const r of rows) totals[r.merchant] += r.amount;
+
+  return { merchants: query.merchants, days, totals };
+}
+
 export async function updateExpense(userId: string, id: string, patch: repository.ExpensePatch) {
   if (patch.date !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(patch.date)) {
     throw new ValidationError('Date must be in YYYY-MM-DD format');

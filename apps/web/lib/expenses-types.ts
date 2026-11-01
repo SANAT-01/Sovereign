@@ -53,3 +53,17 @@ export interface ExpensesChartsResponse {
   topMerchants: MerchantPoint[];
   stats: { income: number; expense: number; net: number; balance: number };
 }
+
+// Per-merchant spend trend, read from GET /expenses/merchant-trend.
+// One row per date, with one amount key per selected merchant — the shape
+// Recharts wants for a multi-line chart.
+export interface MerchantTrendDay {
+  date: string;
+  amounts: Record<string, number>;
+}
+
+export interface MerchantTrendResponse {
+  merchants: string[];
+  days: MerchantTrendDay[];
+  totals: Record<string, number>;
+}

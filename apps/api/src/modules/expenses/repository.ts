@@ -247,6 +247,65 @@ export async function getTopMerchants(
   return result.rows.map((r) => ({ name: r.name, amount: Number(r.amount) }));
 }
 
+export type TransactionType = 'debit' | 'credit';
+
+// Column names can't be parameterized — a closed map (not the raw `type`
+// value) keeps this safe even if a future caller's TS type gets bypassed,
+// same defense-in-depth as SORT_COLUMNS above.
+const TYPE_COLUMNS: Record<TransactionType, string> = { debit: 'debit', credit: 'credit' };
+
+// Distinct merchant/counterparty names for the dropdown — same grouping key
+// as getTopMerchants, so the name a user picks is always findable in the
+// data. Scoped to `type` so the list only offers names that actually have
+// that kind of transaction (no point offering a merchant with zero credits
+// in the credit chart's picker).
+export async function getDistinctMerchants(userId: string, type: TransactionType): Promise<string[]> {
+  const column = TYPE_COLUMNS[type];
+  const result = await db.query<{ name: string }>(
+    `SELECT DISTINCT COALESCE(merchant_name, counterparty_name) AS name
+     FROM expenses
+     WHERE user_id = $1 AND COALESCE(merchant_name, counterparty_name) IS NOT NULL AND ${column} IS NOT NULL
+     ORDER BY name ASC`,
+    [userId],
+  );
+  return result.rows.map((r) => r.name);
+}
+
+// One row per (date, merchant) that had activity of `type` — the service
+// layer pivots this into a dense days[] array with one key per selected
+// merchant.
+export async function getMerchantsDailySeries(
+  userId: string,
+  merchants: string[],
+  type: TransactionType,
+  range: ChartRangeQuery,
+): Promise<{ date: string; merchant: string; amount: number }[]> {
+  const column = TYPE_COLUMNS[type];
+  const conditions = [
+    'user_id = $1',
+    `${column} IS NOT NULL`,
+    'COALESCE(merchant_name, counterparty_name) = ANY($2)',
+  ];
+  const params: unknown[] = [userId, merchants];
+  if (range.dateFrom) {
+    params.push(range.dateFrom);
+    conditions.push(`date >= $${params.length}`);
+  }
+  if (range.dateTo) {
+    params.push(range.dateTo);
+    conditions.push(`date <= $${params.length}`);
+  }
+  const result = await db.query<{ date: string; merchant: string; amount: string }>(
+    `SELECT date, COALESCE(merchant_name, counterparty_name) AS merchant, COALESCE(SUM(${column}), 0) AS amount
+     FROM expenses
+     WHERE ${conditions.join(' AND ')}
+     GROUP BY date, merchant
+     ORDER BY date ASC`,
+    params,
+  );
+  return result.rows.map((r) => ({ date: r.date, merchant: r.merchant, amount: Number(r.amount) }));
+}
+
 export interface ExpensePatch {
   date?: string;
   details?: string;

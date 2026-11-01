@@ -60,6 +60,48 @@ router.get('/expenses/charts', async (req, res, next) => {
   }
 });
 
+const merchantsQuerySchema = z.object({
+  type: z.enum(['debit', 'credit']).optional(),
+});
+
+router.get('/expenses/merchants', async (req, res, next) => {
+  try {
+    const query = merchantsQuerySchema.parse(req.query);
+    res.json(await service.listMerchants(userId(req), query.type ?? 'debit'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+const merchantTrendQuerySchema = z.object({
+  // Comma-separated list — e.g. "Zepto,Swiggy". Count/membership validated
+  // in the service layer (MAX_TREND_MERCHANTS), not here.
+  merchants: z.string().min(1).max(2000),
+  type: z.enum(['debit', 'credit']).optional(),
+  from: z.string().regex(DATE_RE, 'from must be YYYY-MM-DD').optional(),
+  to: z.string().regex(DATE_RE, 'to must be YYYY-MM-DD').optional(),
+});
+
+router.get('/expenses/merchant-trend', async (req, res, next) => {
+  try {
+    const parsed = merchantTrendQuerySchema.parse(req.query);
+    const merchants = parsed.merchants
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean);
+    res.json(
+      await service.getMerchantTrend(userId(req), {
+        merchants,
+        type: parsed.type ?? 'debit',
+        from: parsed.from,
+        to: parsed.to,
+      }),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/expenses/template', async (_req, res, next) => {
   try {
     const buffer = await service.generateTemplate();

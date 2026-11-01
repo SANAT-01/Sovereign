@@ -5,6 +5,7 @@ import type { ExpensesChartsResponse, ExpensesListResponse } from "@/lib/expense
 import { ExpensesBoard } from "@/components/expenses/ExpensesBoard";
 import { ExpensesCharts } from "@/components/expenses/ExpensesCharts";
 import { ExpensesHeatmap } from "@/components/expenses/ExpensesHeatmap";
+import { ExpensesMerchantTrend } from "@/components/expenses/ExpensesMerchantTrend";
 
 const EMPTY: ExpensesListResponse = { rows: [], total: 0, page: 1, pageSize: 20, totalPages: 1 };
 const EMPTY_CHARTS: ExpensesChartsResponse = {
@@ -41,6 +42,10 @@ export default async function ExpensesPage() {
         </div>
 
         <ExpensesHeatmap />
+
+        <ExpensesMerchantTrend type="debit" />
+
+        <ExpensesMerchantTrend type="credit" />
 
         <h2 className="mt-10 text-lg font-semibold text-white">Transactions</h2>
         <div className="mt-4">
