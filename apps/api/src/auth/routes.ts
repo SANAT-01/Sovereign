@@ -10,7 +10,14 @@ const router = Router();
 // browser is left stranded on the API's origin after login.
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-router.get('/auth/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
+// prompt: 'select_account' forces Google's account chooser every time —
+// without it, Google silently re-authenticates with the still-active
+// browser session instead, since our own /auth/logout only clears this
+// app's session cookie and has no effect on Google's own login state.
+router.get(
+  '/auth/google',
+  passport.authenticate('google', { scope: ['email', 'profile'], prompt: 'select_account' }),
+);
 
 router.get(
   '/auth/google/callback',
