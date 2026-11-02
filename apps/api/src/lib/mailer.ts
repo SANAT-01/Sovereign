@@ -1,11 +1,10 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 
 // Sends reminder digests (APPROACH.md §21) over Gmail SMTP using the app's
-// own sender account — one server-wide credential, not per-user, same
-// reasoning as CHAT_KEY_ENCRYPTION_SECRET being one secret rather than
-// one per user. Validated lazily (only when a send is actually attempted),
-// same pattern as lib/crypto.ts's getKey() — a deployment that never
-// enables reminders shouldn't fail to boot over unset SMTP env vars.
+// own sender account — one server-wide credential, not per-user. Validated
+// lazily (only when a send is actually attempted), same pattern as
+// lib/kafka.ts's getKafka() — a deployment that never enables reminders
+// shouldn't fail to boot over unset SMTP env vars.
 //
 // The transport is cached as a module-level singleton (`pool: true` lets
 // nodemailer reuse/manage a small connection pool internally) instead of

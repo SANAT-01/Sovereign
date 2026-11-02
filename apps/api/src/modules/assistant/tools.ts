@@ -1,61 +1,87 @@
-import { Type, type FunctionDeclaration } from '@google/genai';
 import * as notesService from '../notes/service.js';
 import * as progressService from '../progress/service.js';
 import * as portfolioService from '../portfolio/service.js';
+
+// OpenAI-compatible "tools" shape (freellmapi's /v1/chat/completions is an
+// OpenAI-compatible endpoint — APPROACH.md §19) — plain JSON Schema
+// `parameters`, not Gemini's `Type` enum.
+export interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
 
 // The model only ever sees these five declarations — no update/delete
 // tool exists, and none of them takes a userId argument (APPROACH.md
 // §19). `userId` below always comes from the authenticated session in
 // service.ts, never from the model.
 
-export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
+export const TOOL_DECLARATIONS: ToolDefinition[] = [
   {
-    name: 'search_notes',
-    description: "Search the user's own notes by title/content substring. Omit query to list all notes.",
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        query: { type: Type.STRING, description: 'Substring to search for in note titles/snippets (optional).' },
-      },
-    },
-  },
-  {
-    name: 'get_note_detail',
-    description: 'Fetch the full plain-text content of one note by id (ids come from search_notes results).',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        noteId: { type: Type.STRING, description: 'The note id to fetch.' },
-      },
-      required: ['noteId'],
-    },
-  },
-  {
-    name: 'get_progress_summary',
-    description:
-      "Get the user's Progress Tracker attention summary: daily habits not done today, stale study-plan topics, items due soon, stale interviews/other items, and open 'other' items.",
-    parameters: { type: Type.OBJECT, properties: {} },
-  },
-  {
-    name: 'list_progress_items',
-    description:
-      "List the user's Progress Tracker items (habits, study plans, interviews, or any user-defined category). Optionally filter by exact type.",
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        type: {
-          type: Type.STRING,
-          description:
-            "Exact type to filter by, e.g. 'daily', 'study_plan', 'interview', 'other', or any user-defined category string. Omit to list everything.",
+    type: 'function',
+    function: {
+      name: 'search_notes',
+      description: "Search the user's own notes by title/content substring. Omit query to list all notes.",
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Substring to search for in note titles/snippets (optional).' },
         },
       },
     },
   },
   {
-    name: 'list_portfolio_items',
-    description:
-      "List the user's Portfolio sections and items — links, documents, and contact-style text fields (e.g. GitHub, resume, phone number).",
-    parameters: { type: Type.OBJECT, properties: {} },
+    type: 'function',
+    function: {
+      name: 'get_note_detail',
+      description: 'Fetch the full plain-text content of one note by id (ids come from search_notes results).',
+      parameters: {
+        type: 'object',
+        properties: {
+          noteId: { type: 'string', description: 'The note id to fetch.' },
+        },
+        required: ['noteId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_progress_summary',
+      description:
+        "Get the user's Progress Tracker attention summary: daily habits not done today, stale study-plan topics, items due soon, stale interviews/other items, and open 'other' items.",
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_progress_items',
+      description:
+        "List the user's Progress Tracker items (habits, study plans, interviews, or any user-defined category). Optionally filter by exact type.",
+      parameters: {
+        type: 'object',
+        properties: {
+          type: {
+            type: 'string',
+            description:
+              "Exact type to filter by, e.g. 'daily', 'study_plan', 'interview', 'other', or any user-defined category string. Omit to list everything.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_portfolio_items',
+      description:
+        "List the user's Portfolio sections and items — links, documents, and contact-style text fields (e.g. GitHub, resume, phone number).",
+      parameters: { type: 'object', properties: {} },
+    },
   },
 ];
 

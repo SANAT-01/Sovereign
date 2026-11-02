@@ -91,8 +91,7 @@ export async function updateNotificationPrefs(
 }
 
 // Scoped to exactly what the reminders job needs (id/email/prefs), not the
-// full User shape — this runs on a timer outside any request, so it
-// shouldn't carry gemini_api_key_encrypted-adjacent risk of over-fetching.
+// full User shape, since this runs on a timer outside any request.
 export async function listUsersWithRemindersEnabled(): Promise<
   { id: string; email: string; notification_prefs: NotificationPrefs }[]
 > {
@@ -100,29 +99,4 @@ export async function listUsersWithRemindersEnabled(): Promise<
     `SELECT id, email, notification_prefs FROM users WHERE notification_prefs->>'enabled' = 'true'`,
   );
   return result.rows;
-}
-
-// Deliberately NOT part of the `User` interface/`SELECT *` shape above —
-// the encrypted key is only ever fetched by this one narrow query
-// (assistant/service.ts), never attached to the general User object that
-// flows through req.user, so there's no row at all for an accidental
-// `res.json({ user })` to leak (APPROACH.md §19).
-export async function setGeminiApiKeyEncrypted(id: string, encrypted: string | null): Promise<void> {
-  await db.query('UPDATE users SET gemini_api_key_encrypted = $2 WHERE id = $1', [id, encrypted]);
-}
-
-export async function getGeminiApiKeyEncrypted(id: string): Promise<string | null> {
-  const result = await db.query<{ gemini_api_key_encrypted: string | null }>(
-    'SELECT gemini_api_key_encrypted FROM users WHERE id = $1',
-    [id],
-  );
-  return result.rows[0]?.gemini_api_key_encrypted ?? null;
-}
-
-export async function hasGeminiApiKey(id: string): Promise<boolean> {
-  const result = await db.query<{ has_key: boolean }>(
-    'SELECT gemini_api_key_encrypted IS NOT NULL AS has_key FROM users WHERE id = $1',
-    [id],
-  );
-  return result.rows[0]?.has_key ?? false;
 }

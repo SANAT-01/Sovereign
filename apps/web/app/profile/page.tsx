@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/Card";
 import { AvatarUploadForm } from "@/components/AvatarUploadForm";
-import { GeminiApiKeyForm } from "@/components/GeminiApiKeyForm";
 import { NotificationPrefsForm } from "@/components/NotificationPrefsForm";
 import { getCurrentUser, ssrGet } from "@/lib/api";
 
@@ -13,7 +12,6 @@ interface NotificationPrefs {
 }
 
 interface ProfileResponse {
-  hasGeminiApiKey: boolean;
   user: { notification_prefs: NotificationPrefs } | null;
 }
 
@@ -55,17 +53,6 @@ export default async function ProfilePage() {
               <dd className="text-white">{user.email}</dd>
             </div>
           </dl>
-        </Card>
-
-        <Card variant="glass" className="mt-4 p-6">
-          <p className="text-sm font-medium text-accent">Assistant (Gemini API key)</p>
-          <p className="mt-1 text-xs text-slate-400">
-            Your own Gemini API key, used only to answer your questions on the Assistant page — never shown again
-            once saved, and never used for anything but your own requests.
-          </p>
-          <div className="mt-4">
-            <GeminiApiKeyForm initialHasKey={profile?.hasGeminiApiKey ?? false} />
-          </div>
         </Card>
 
         <Card variant="glass" className="mt-4 p-6">

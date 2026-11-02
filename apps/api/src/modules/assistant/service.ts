@@ -1,13 +1,10 @@
-import { GoogleGenAI, createPartFromFunctionResponse, type Content } from '@google/genai';
 import { ValidationError } from '../../errors.js';
-import { decryptSecret } from '../../lib/crypto.js';
-import * as usersRepository from '../users/repository.js';
 import * as repository from './repository.js';
 import { TOOL_DECLARATIONS, runTool } from './tools.js';
 
-const MODEL = 'gemini-flash-latest';
 const HISTORY_LIMIT = 20;
 const MAX_TOOL_ROUNDS = 5;
+const ROUND_TIMEOUT_MS = 30_000;
 
 // Role, work, and data-model context the model would otherwise have to
 // guess — e.g. that a study plan's null coveragePercent means "no topics
@@ -26,11 +23,38 @@ Data model, so you can interpret tool results correctly:
 - get_progress_summary returns the user's current "needs attention" list — habits not done today, stale study topics, items due soon, stale interviews/other items, and open "other" items. Empty lists mean "caught up," not "nothing tracked."
 - A portfolio item's "kind" is "link" (value is a URL), "document" (value is a file URL), or "text" (value is plain text like a phone number).`;
 
-function buildHistoryContents(history: { role: 'user' | 'assistant'; content: string }[]): Content[] {
-  return history.map((m) => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
+interface ChatToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
+interface ChatCompletionMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: ChatToolCall[];
+  tool_call_id?: string;
+}
+
+interface ChatCompletionResponse {
+  choices?: { message: ChatCompletionMessage }[];
+}
+
+// Lazily read/validated (on first actual use, not at import time) so the
+// API doesn't fail to boot over a feature-specific env var a deployment
+// not yet using the assistant hasn't set — same pattern as lib/mailer.ts
+// and lib/kafka.ts.
+function getConfig(): { url: string; apiKey: string; model: string } {
+  const url = process.env.FREELLM_API_URL;
+  const apiKey = process.env.FREELLM_API_KEY;
+  if (!url || !apiKey) {
+    throw new Error('FREELLM_API_URL and FREELLM_API_KEY must be set to use the assistant');
+  }
+  return { url, apiKey, model: process.env.FREELLM_MODEL ?? 'auto' };
+}
+
+function buildHistoryMessages(history: { role: 'user' | 'assistant'; content: string }[]): ChatCompletionMessage[] {
+  return history.map((m) => ({ role: m.role, content: m.content }));
 }
 
 export async function listMessages(userId: string) {
@@ -41,81 +65,83 @@ export async function clearMessages(userId: string) {
   await repository.clearMessages(userId);
 }
 
-const ROUND_TIMEOUT_MS = 30_000;
-
 export async function sendMessage(userId: string, userMessage: string) {
   if (!userMessage.trim()) throw new ValidationError('Message is required');
 
-  const encryptedKey = await usersRepository.getGeminiApiKeyEncrypted(userId);
-  if (!encryptedKey) {
-    throw new ValidationError('Add your Gemini API key in Profile before using the assistant.');
-  }
-  const apiKey = decryptSecret(encryptedKey);
-  const ai = new GoogleGenAI({ apiKey });
-
   const history = await repository.listMessages(userId, HISTORY_LIMIT);
-  const contents: Content[] = [
-    ...buildHistoryContents(history),
-    { role: 'user', parts: [{ text: userMessage.trim() }] },
+  const messages: ChatCompletionMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...buildHistoryMessages(history),
+    { role: 'user', content: userMessage.trim() },
   ];
 
-  // Persisted immediately, before calling Gemini at all — a failed/slow
-  // Gemini call must never lose the user's own message (previously this
-  // was only saved after the whole exchange succeeded, so a crash mid-call
-  // silently dropped it — the "need to refresh to see it" bug).
+  // Persisted immediately, before calling the LLM at all — a failed/slow
+  // call must never lose the user's own message (previously this was only
+  // saved after the whole exchange succeeded, so a crash mid-call silently
+  // dropped it — the "need to refresh to see it" bug).
   await repository.appendMessage(userId, 'user', userMessage.trim());
 
   let finalText: string;
   try {
-    finalText = await runGeminiLoop(ai, contents, userId);
+    finalText = await runChatLoop(messages, userId);
   } catch (err) {
-    // Never let a Gemini/SDK error propagate uncaught — always resolve the
-    // request with *something*, so the client's "Thinking…" state always
-    // ends instead of hanging indefinitely.
-    console.error('Gemini request failed:', err);
-    finalText =
-      err instanceof Error && err.message.toLowerCase().includes('api key')
-        ? "That didn't work — double-check your Gemini API key in Profile."
-        : "Sorry, I couldn't reach the AI service just now — try again in a moment.";
+    // Never let an LLM/network error propagate uncaught — always resolve
+    // the request with *something*, so the client's "Thinking…" state
+    // always ends instead of hanging indefinitely.
+    console.error('Assistant request failed:', err);
+    finalText = "Sorry, I couldn't reach the AI service just now — try again in a moment.";
   }
 
   const saved = await repository.appendMessage(userId, 'assistant', finalText);
   return saved;
 }
 
-async function runGeminiLoop(ai: GoogleGenAI, contents: Content[], userId: string): Promise<string> {
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      contents,
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
-        // Bounds each round so a slow/hung call can't block the request
-        // (and the client) indefinitely.
-        abortSignal: AbortSignal.timeout(ROUND_TIMEOUT_MS),
-      },
-    });
+async function runChatLoop(messages: ChatCompletionMessage[], userId: string): Promise<string> {
+  const { url, apiKey, model } = getConfig();
 
-    const calls = response.functionCalls;
-    if (!calls || calls.length === 0) {
-      return response.text ?? "Sorry, I couldn't come up with an answer — try rephrasing your question.";
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ model, messages, tools: TOOL_DECLARATIONS }),
+      // Bounds each round so a slow/hung call can't block the request
+      // (and the client) indefinitely.
+      signal: AbortSignal.timeout(ROUND_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      throw new Error(`freellmapi request failed: ${res.status} ${await res.text().catch(() => '')}`);
+    }
+
+    const data = (await res.json()) as ChatCompletionResponse;
+    const message = data.choices?.[0]?.message;
+    if (!message) throw new Error('freellmapi returned no choices');
+
+    const toolCalls = message.tool_calls;
+    if (!toolCalls || toolCalls.length === 0) {
+      return message.content ?? "Sorry, I couldn't come up with an answer — try rephrasing your question.";
     }
 
     // Echo the model's own turn back verbatim (required for multi-turn
-    // function calling), then answer with this round's tool results.
-    const modelContent = response.candidates?.[0]?.content;
-    if (modelContent) contents.push(modelContent);
+    // tool calling), then answer with this round's tool results.
+    messages.push(message);
 
-    const responseParts = await Promise.all(
-      calls.map(async (call) => {
-        const result = await runTool(userId, call.name ?? '', call.args ?? {});
-        return createPartFromFunctionResponse(call.id ?? call.name ?? '', call.name ?? '', {
-          result,
-        } as Record<string, unknown>);
+    const toolResults = await Promise.all(
+      toolCalls.map(async (call) => {
+        let args: Record<string, unknown> = {};
+        try {
+          args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+        } catch {
+          // Malformed JSON from the model — run the tool with no args
+          // rather than failing the whole round.
+        }
+        const result = await runTool(userId, call.function.name, args);
+        return { role: 'tool' as const, tool_call_id: call.id, content: JSON.stringify(result) };
       }),
     );
-    contents.push({ role: 'user', parts: responseParts });
+    messages.push(...toolResults);
   }
 
   return "I had to stop after a few steps without a final answer — try asking something more specific.";

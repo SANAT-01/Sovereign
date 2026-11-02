@@ -59,26 +59,4 @@ router.patch('/profile/notification-prefs', requireAuth, async (req, res, next) 
   }
 });
 
-const geminiKeySchema = z.object({ apiKey: z.string().min(1) });
-router.patch('/profile/gemini-key', requireAuth, async (req, res, next) => {
-  try {
-    const { apiKey } = geminiKeySchema.parse(req.body);
-    const requester = req.user as User;
-    await service.setGeminiApiKey(requester.id, apiKey);
-    res.json({ hasGeminiApiKey: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.delete('/profile/gemini-key', requireAuth, async (req, res, next) => {
-  try {
-    const requester = req.user as User;
-    await service.clearGeminiApiKey(requester.id);
-    res.json({ hasGeminiApiKey: false });
-  } catch (err) {
-    next(err);
-  }
-});
-
 export default router;

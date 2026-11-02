@@ -1,7 +1,6 @@
 import sharp from 'sharp';
 import { ValidationError } from '../../errors.js';
 import { uploadPublicFile } from '../../lib/storage.js';
-import { encryptSecret } from '../../lib/crypto.js';
 import { MIN_PROD_INTERVAL_MINUTES } from '../../jobs/reminders.js';
 import * as usersRepository from '../users/repository.js';
 import type { User, AvatarUrls, NotificationPrefs } from '../users/repository.js';
@@ -27,11 +26,9 @@ const VARIANT_SIZES: Record<keyof AvatarUrls, number> = {
 // "don't fabricate" rule to home widgets as to the progress dashboard).
 const AVAILABLE_WIDGETS = new Set(['progress']);
 
-// Explicit whitelist, not a spread-and-delete — `SELECT *` on the users
-// table also returns gemini_api_key_encrypted (APPROACH.md §19), which
-// must never reach a response. Rebuilding the object field-by-field means
-// a future column added to the table is excluded by default, not leaked
-// by default.
+// Explicit whitelist, not a spread-and-delete — rebuilding the object
+// field-by-field means a future column added to the table is excluded by
+// default, not leaked by default.
 function toPublicUser(user: User): User {
   return {
     id: user.id,
@@ -48,9 +45,8 @@ function toPublicUser(user: User): User {
 
 export async function getProfile(userId: string) {
   const user = await usersRepository.findById(userId);
-  if (!user) return { user: null, hasGeminiApiKey: false };
-  const hasGeminiApiKey = await usersRepository.hasGeminiApiKey(userId);
-  return { user: toPublicUser(user), hasGeminiApiKey };
+  if (!user) return { user: null };
+  return { user: toPublicUser(user) };
 }
 
 export async function updateHomeWidgets(userId: string, widgets: string[]): Promise<User> {
@@ -113,13 +109,4 @@ export async function updateNotificationPrefs(
   }
   const user = await usersRepository.updateNotificationPrefs(userId, patch);
   return toPublicUser(user);
-}
-
-export async function setGeminiApiKey(userId: string, apiKey: string): Promise<void> {
-  if (!apiKey.trim()) throw new ValidationError('API key is required');
-  await usersRepository.setGeminiApiKeyEncrypted(userId, encryptSecret(apiKey.trim()));
-}
-
-export async function clearGeminiApiKey(userId: string): Promise<void> {
-  await usersRepository.setGeminiApiKeyEncrypted(userId, null);
 }

@@ -46,13 +46,10 @@ UPDATE users SET home_widgets = '["progress", "expenses", "notes", "portfolio"]'
 -- across visits/devices rather than resetting every page load.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS progress_chart_prefs JSONB NOT NULL DEFAULT '{}'::jsonb;
 
--- The user's own Gemini API key for the Assistant module (APPROACH.md
--- §19) — AES-256-GCM encrypted (lib/crypto.ts) before it ever reaches
--- this column, decrypted only in-memory for the duration of one Gemini
--- call. Never serialized back to the client as anything but a boolean
--- "is one set" (users/repository.ts's User type omits this column; see
--- profile/service.ts).
-ALTER TABLE users ADD COLUMN IF NOT EXISTS gemini_api_key_encrypted TEXT;
+-- Per-user LLM API key support, superseded by a single server-wide
+-- freellmapi endpoint (APPROACH.md §19) — no per-user secret to store
+-- anymore.
+ALTER TABLE users DROP COLUMN IF EXISTS gemini_api_key_encrypted;
 
 -- Email reminder preferences (APPROACH.md §21) — enabled/off, how often to
 -- check (minutes), and when the last digest actually went out. The 3-hour

@@ -289,15 +289,15 @@ notes (
 
 ## 19. Assistant (Chatbot) Module Design
 
-A chat assistant that answers questions about *your own* data (notes, progress, portfolio) using an LLM API key you provide yourself (Gemini, for now).
+A chat assistant that answers questions about *your own* data (notes, progress, portfolio) using a self-hosted LLM gateway (`freellmapi`, a server the user runs on their own VPS) — **not** a per-user API key. Originally built around a Gemini key each user pasted into Profile; superseded once a free, self-hosted OpenAI-compatible LLM endpoint became available, since there was no longer a reason to make every user find and manage their own key for a single-user app.
 
 **The core safety decision: no direct database access for the model, ever — not even read-only SQL.** A read-only Postgres role still lets a model write arbitrary `SELECT`s across every user's rows; "read-only" isn't the same as "scoped to one user." Instead:
 
-- The model only ever sees a **fixed, small set of tool functions** (Gemini function-calling) — `search_notes`, `get_progress_summary`, `list_progress_items`, `list_portfolio_items`. No `update_*`/`delete_*` tool exists, so the model cannot mutate anything regardless of what it's asked to do.
+- The model only ever sees a **fixed, small set of tool functions** (OpenAI-style `tools`/function-calling) — `search_notes`, `get_progress_summary`, `list_progress_items`, `list_portfolio_items`. No `update_*`/`delete_*` tool exists, so the model cannot mutate anything regardless of what it's asked to do.
 - **Every tool function hardcodes `user_id` from the authenticated session** — it is never a parameter the model supplies or sees. The model can ask for "my notes about interviews," but there is no tool that takes a `user_id` argument at all, so it's architecturally impossible for it to fetch another account's data, not just policy-discouraged.
 - Each tool is a thin wrapper around the **existing module service functions** (`notes/service.ts`'s `listNotes`, `progress/service.ts`'s `getDashboard`/`listItems`, `portfolio/service.ts`'s `getBoard`) — no new business logic duplicated, just new callers.
 
-**API key storage**: one new column, `users.gemini_api_key_encrypted` (same "add a column to `users`" pattern as `home_widgets`/`progress_chart_prefs`) — AES-256-GCM encrypted with a server-only secret (`CHAT_KEY_ENCRYPTION_SECRET`, a new env var, never the same secret as `SESSION_SECRET` — different purposes shouldn't share a key). The key is decrypted only in-memory, server-side, for the duration of a single Gemini API call; it is **never sent back to the browser** after being saved — the Profile page only ever shows "API key configured" / "Not set," never any part of the key itself, not even masked digits (nothing to leak if there's nothing to show).
+**LLM access**: one server-wide `FREELLM_API_URL`/`FREELLM_API_KEY`/`FREELLM_MODEL` (default `"auto"`, freellmapi's own model router) — lazily read/validated on first actual use (`assistant/service.ts`'s `getConfig()`), same pattern as `lib/mailer.ts`'s SMTP config and `lib/kafka.ts`'s broker config, so a deployment that never uses the assistant doesn't fail to boot over an unset env var. The endpoint is an OpenAI-compatible `/v1/chat/completions` — called with plain `fetch`, no SDK, since it's one JSON POST with a bearer token. No per-user secret exists anymore; there is nothing for the Profile page to show or let the user manage here.
 
 **Chat history persisted**: one table —
 ```
@@ -307,16 +307,15 @@ chat_messages (
 ```
 One continuous conversation per user (no multi-thread/conversation management in v1 — that's real scope beyond what's asked). `role` is `'user'` or `'assistant'`; tool-call/tool-result exchanges happen only in-memory during a single request and are not persisted as separate rows — only the final user message and final assistant text go in the table, same as what a user would actually see.
 
-**System prompt**: every request to Gemini includes a fixed system instruction covering three things, so the model doesn't have to infer them — (1) **role**: "you are the assistant inside Sovereign, a private personal app — you help the user recall and understand their own notes, progress tracking, and career/portfolio links"; (2) **behavior rules**: always use a tool to fetch real data rather than guessing, say plainly when nothing matches rather than inventing an answer, stay concise; (3) **data model**, a short description of what each tool returns and what the fields mean (e.g. a progress item's `type` is `daily`/`study_plan`/`interview`/a user-defined category, `data` holds type-specific fields like an interview's `stage`/`company` or a study plan's `coveragePercent`) — without this the model has no way to know an interview's `stage` values or that a `null` `coveragePercent` means "no topics yet," not "0%."
+**System prompt**: every request includes a fixed system message covering three things, so the model doesn't have to infer them — (1) **role**: "you are the assistant inside Sovereign, a private personal app — you help the user recall and understand their own notes, progress tracking, and career/portfolio links"; (2) **behavior rules**: always use a tool to fetch real data rather than guessing, say plainly when nothing matches rather than inventing an answer, stay concise; (3) **data model**, a short description of what each tool returns and what the fields mean (e.g. a progress item's `type` is `daily`/`study_plan`/`interview`/a user-defined category, `data` holds type-specific fields like an interview's `stage`/`company` or a study plan's `coveragePercent`) — without this the model has no way to know an interview's `stage` values or that a `null` `coveragePercent` means "no topics yet," not "0%."
 
 **Request flow** (`POST /assistant/messages`, non-streaming for v1):
-1. Decrypt the caller's stored Gemini key; if none is set, return a clear error pointing at Profile — don't silently fail.
-2. Load recent history (last ~20 messages) for context.
-3. Call Gemini with the tool definitions + history + new message.
-4. If Gemini responds with a function call, execute the matching tool (scoped to the session's `user_id`) and feed the result back; repeat up to a small fixed cap (5 rounds) to bound cost/latency if the model loops.
-5. Persist the user message and the final assistant reply; return the reply.
+1. Load recent history (last ~20 messages) for context.
+2. Call freellmapi with the tool definitions + history + new message.
+3. If the model responds with `tool_calls`, execute each matching tool (scoped to the session's `user_id`) and feed the results back as `role: "tool"` messages; repeat up to a small fixed cap (5 rounds) to bound cost/latency if the model loops.
+4. Persist the user message and the final assistant reply; return the reply.
 
-**UI**: a new "Assistant" page in the sidebar nav (own module, same pattern as every other module), not a floating cross-page widget — simpler to build and reason about, and matches how every other module here is just its own page. Profile page gets a new field to paste/update/remove the Gemini key.
+**UI**: a new "Assistant" page in the sidebar nav (own module, same pattern as every other module), not a floating cross-page widget — simpler to build and reason about, and matches how every other module here is just its own page. No API-key field on Profile anymore — the chat is always available once the server-side env vars are set.
 
 ## 20. Expense Tracker Module Design
 

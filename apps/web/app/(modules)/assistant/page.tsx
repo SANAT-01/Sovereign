@@ -4,19 +4,12 @@ import { getCurrentUser, ssrGet } from "@/lib/api";
 import type { ChatMessage } from "@/lib/assistant-types";
 import { ChatBoard } from "@/components/assistant/ChatBoard";
 
-interface ProfileResponse {
-  hasGeminiApiKey: boolean;
-}
-
 export default async function AssistantPage() {
   // SSR auth check, same pattern as every other module (APPROACH.md §6).
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const [messages, profile] = await Promise.all([
-    ssrGet<ChatMessage[]>("/assistant/messages"),
-    ssrGet<ProfileResponse>("/profile"),
-  ]);
+  const messages = await ssrGet<ChatMessage[]>("/assistant/messages");
 
   return (
     <AppShell>
@@ -26,7 +19,7 @@ export default async function AssistantPage() {
             <h1 className="text-lg font-semibold text-white">Assistant</h1>
             <p className="text-xs text-slate-400">Answers questions about your own notes, progress, and portfolio.</p>
           </div>
-          <ChatBoard initialMessages={messages ?? []} hasGeminiApiKey={profile?.hasGeminiApiKey ?? false} />
+          <ChatBoard initialMessages={messages ?? []} />
         </div>
       </main>
     </AppShell>
