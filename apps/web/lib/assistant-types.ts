@@ -6,3 +6,10 @@ export interface ChatMessage {
   content: string;
   created_at: string;
 }
+
+// GET /assistant/messages's shape — one page of 10, oldest-first, plus
+// whether an older page still exists (for the scroll-up-to-load-more UI).
+export interface ChatMessagesPage {
+  messages: ChatMessage[];
+  hasMore: boolean;
+}

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { getCurrentUser, ssrGet } from "@/lib/api";
-import type { ChatMessage } from "@/lib/assistant-types";
+import type { ChatMessagesPage } from "@/lib/assistant-types";
 import { ChatBoard } from "@/components/assistant/ChatBoard";
 
 export default async function AssistantPage() {
@@ -9,7 +9,9 @@ export default async function AssistantPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const messages = await ssrGet<ChatMessage[]>("/assistant/messages");
+  // Only the most recent page (10) loads up front — older history is
+  // fetched on demand as the user scrolls up (ChatBoard.tsx).
+  const page = await ssrGet<ChatMessagesPage>("/assistant/messages");
 
   return (
     <AppShell>
@@ -19,7 +21,7 @@ export default async function AssistantPage() {
             <h1 className="text-lg font-semibold text-white">Assistant</h1>
             <p className="text-xs text-slate-400">Answers questions about your own notes, progress, and portfolio.</p>
           </div>
-          <ChatBoard initialMessages={messages ?? []} />
+          <ChatBoard initialMessages={page?.messages ?? []} initialHasMore={page?.hasMore ?? false} />
         </div>
       </main>
     </AppShell>

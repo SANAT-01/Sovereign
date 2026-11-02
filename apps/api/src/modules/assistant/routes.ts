@@ -11,9 +11,15 @@ function userId(req: { user?: unknown }): string {
   return (req.user as User).id;
 }
 
+const listMessagesQuerySchema = z.object({
+  // ISO timestamp of the oldest message currently loaded in the UI —
+  // omit for the newest page.
+  before: z.string().datetime().optional(),
+});
 router.get('/assistant/messages', async (req, res, next) => {
   try {
-    res.json(await service.listMessages(userId(req)));
+    const { before } = listMessagesQuerySchema.parse(req.query);
+    res.json(await service.listMessagesPage(userId(req), before));
   } catch (err) {
     next(err);
   }
