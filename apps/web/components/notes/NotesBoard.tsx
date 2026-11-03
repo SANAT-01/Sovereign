@@ -109,7 +109,7 @@ export function NotesBoard({ initialNotes }: { initialNotes: NoteListItem[] }) {
   return (
     <div className="flex h-full min-h-0 gap-4">
       <div
-        className={`min-h-0 flex-col rounded-3xl border border-white/10 bg-surface-card/55 backdrop-blur-xl lg:flex lg:w-80 lg:shrink-0 ${
+        className={`liquid-glass liquid-glass-tint min-h-0 flex-col rounded-3xl lg:flex lg:w-80 lg:shrink-0 ${
           mobileView === "editor" ? "hidden" : "flex w-full"
         }`}
       >
@@ -123,7 +123,7 @@ export function NotesBoard({ initialNotes }: { initialNotes: NoteListItem[] }) {
       </div>
 
       <div
-        className={`min-h-0 flex-1 flex-col rounded-3xl border border-white/10 bg-surface-card/55 backdrop-blur-xl lg:flex ${
+        className={`liquid-glass liquid-glass-tint min-h-0 flex-1 flex-col rounded-3xl lg:flex ${
           mobileView === "list" ? "hidden" : "flex w-full"
         }`}
       >

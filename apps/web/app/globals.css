@@ -4,6 +4,12 @@
 
 :root {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Pointer position in viewport px, written by LiquidPointer.tsx on
+     fine-pointer devices only. Parked far off-screen by default so the
+     pointer-driven highlights below are simply invisible on touch
+     devices / reduced motion / before the first mouse move. */
+  --lg-x: -9999px;
+  --lg-y: -9999px;
 }
 
 /* Dark glassmorphic theme is the final/primary look for this app
@@ -24,6 +30,156 @@ body {
     radial-gradient(circle at 50% 100%, rgba(236, 72, 153, 0.08), transparent 45%),
     #0b1210;
   background-attachment: fixed;
+}
+
+/* Recessed text fields — iOS fields sit *into* the glass rather than on
+   it. A focus ring (Tailwind's focus:ring-*, also a box-shadow) replaces
+   this while focused, which is the intended look. */
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select {
+    box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.3);
+  }
+}
+
+/* ── Liquid Glass (iOS 26–style) ─────────────────────────────────────────
+   The app-wide surface language (ui-dev visual-style.md). Approximates
+   Apple's Liquid Glass without true refraction, which the web can't do
+   portably:
+   - clearer than classic frosted glass (moderate blur, boosted
+     saturation/brightness), so the drifting color behind it stays alive;
+   - "lensing" at the edges via layered inset shadows — a bright top-left
+     rim, a faint bottom-right rim, light pooled under the top edge and a
+     darker band at the bottom suggesting thickness;
+   - a specular highlight that tracks the pointer across the surface
+     (::before) and along the rim (::after). Both read --lg-x/--lg-y in
+     viewport space via `background-attachment: fixed`, so one global
+     pointer listener (LiquidPointer.tsx) drives every panel at once — no
+     per-element JS.
+   `isolation` keeps the ::before sheen behind each panel's own content. */
+@layer components {
+  .liquid-glass {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(
+      160deg,
+      rgb(255 255 255 / 0.09) 0%,
+      rgb(255 255 255 / 0.025) 45%,
+      rgb(255 255 255 / 0.05) 100%
+    );
+    border: 1px solid rgb(255 255 255 / 0.1);
+    -webkit-backdrop-filter: blur(18px) saturate(185%) brightness(1.06);
+    backdrop-filter: blur(18px) saturate(185%) brightness(1.06);
+    box-shadow:
+      inset 1px 1px 0 0 rgb(255 255 255 / 0.3),
+      inset -1px -1px 0 0 rgb(255 255 255 / 0.08),
+      inset 0 12px 24px -16px rgb(255 255 255 / 0.18),
+      inset 0 -14px 28px -20px rgb(0 0 0 / 0.35),
+      0 16px 40px -18px rgb(0 0 0 / 0.6);
+  }
+  .liquid-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(420px circle at var(--lg-x) var(--lg-y), rgb(255 255 255 / 0.07), transparent 60%) fixed,
+      radial-gradient(120% 70% at 0% 0%, rgb(255 255 255 / 0.1), transparent 55%),
+      radial-gradient(90% 60% at 100% 100%, theme(colors.accent.DEFAULT / 7%), transparent 60%);
+  }
+  /* Rim catch-light: a 1px ring (masked to the border band only) that
+     brightens wherever the pointer is nearest the edge. */
+  .liquid-glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: radial-gradient(240px circle at var(--lg-x) var(--lg-y), rgb(255 255 255 / 0.55), transparent 70%) fixed;
+    /* Prefixed + standard forms; `mask` must precede `mask-composite`
+       since the shorthand resets it. */
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+  /* Teal-tinted glass for the app's "primary" panels (Card variant="solid",
+     sidebar, modals) — same lensing, colored body. Declared after
+     .liquid-glass so its background-color wins over the shorthand reset. */
+  .liquid-glass-tint {
+    background-color: theme(colors.surface.card / 38%);
+  }
+
+  /* Small glass capsule for controls (secondary buttons, active nav pill)
+     — lighter shadow than a panel, same top rim. */
+  .liquid-control {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.04));
+    border: 1px solid rgb(255 255 255 / 0.12);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    backdrop-filter: blur(12px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.3),
+      inset 0 -1px 0 rgb(0 0 0 / 0.15),
+      0 4px 14px -6px rgb(0 0 0 / 0.5);
+  }
+  .liquid-control:hover {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0.07));
+  }
+
+  /* Glossy accent "gel" for primary actions — iOS's tinted prominent glass. */
+  .liquid-gel {
+    background: linear-gradient(180deg, theme(colors.accent.DEFAULT) 0%, theme(colors.accent.dim) 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      inset 0 -2px 6px rgb(0 0 0 / 0.18),
+      0 6px 20px -6px theme(colors.accent.DEFAULT / 55%);
+  }
+
+  /* Springy press — compresses on press, overshoots slightly on release,
+     like iOS's gel-like controls. */
+  .liquid-press {
+    transition:
+      transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      background 200ms ease,
+      background-color 200ms ease,
+      color 200ms ease,
+      filter 200ms ease,
+      opacity 200ms ease;
+  }
+  .liquid-press:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  /* Small raised "droplet" for icon tiles sitting on a liquid-glass panel. */
+  .liquid-bubble {
+    background: linear-gradient(
+      145deg,
+      theme(colors.accent.DEFAULT / 24%),
+      theme(colors.accent.DEFAULT / 6%)
+    );
+    border: 1px solid theme(colors.accent.DEFAULT / 25%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.28),
+      inset 0 -6px 12px rgb(0 0 0 / 0.15),
+      0 4px 14px -4px theme(colors.accent.DEFAULT / 35%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-press {
+    transition-duration: 0ms;
+  }
+  .liquid-press:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 /* Tiptap (components/notes/NotesEditor.tsx) renders plain HTML, which

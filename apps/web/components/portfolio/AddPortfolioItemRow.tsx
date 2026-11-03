@@ -50,13 +50,13 @@ export function AddPortfolioItemRow({
 
   if (!open) {
     return (
-      <div className="flex gap-2 border-t border-dashed border-white/10 px-4 py-3">
+      <div className="mt-1 flex flex-wrap gap-1.5 rounded-2xl border border-dashed border-white/10 p-1.5">
         {(["link", "text", "document"] as ItemKind[]).map((kind) => (
           <button
             key={kind}
             type="button"
             onClick={() => setOpen(kind)}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-accent"
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-slate-400 transition-colors hover:bg-accent/10 hover:text-accent"
           >
             <PlusIcon width={15} height={15} />
             {kind === "link" ? "Link" : kind === "text" ? "Text field" : "Document"}
@@ -67,12 +67,12 @@ export function AddPortfolioItemRow({
   }
 
   return (
-    <div className="space-y-2 border-t border-white/10 bg-white/[0.03] px-4 py-3">
+    <div className="mt-1 space-y-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-3">
       <input
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         placeholder="Label (e.g. GitHub, Resume, Phone)"
-        className="w-full rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+        className="w-full rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
         autoFocus
       />
       {open === "document" ? (
@@ -80,14 +80,14 @@ export function AddPortfolioItemRow({
           ref={fileInputRef}
           type="file"
           accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-          className="w-full text-sm text-slate-300"
+          className="w-full text-sm text-slate-300 file:mr-3 file:rounded-full file:border-0 file:bg-accent/15 file:px-3.5 file:py-1.5 file:text-sm file:font-medium file:text-accent hover:file:bg-accent/25"
         />
       ) : (
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={open === "link" ? "https://…" : "Value"}
-          className="w-full rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+          className="w-full rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
         />
       )}
       <div className="flex justify-end gap-2">

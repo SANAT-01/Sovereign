@@ -11,6 +11,23 @@
 - **Generous internal padding** inside cards — content never touches the card edge.
 - **Soft shadows, not hard borders** — cards separate from the background via blur/shadow, not a visible 1px border.
 
+## Surface treatment: iOS-style Liquid Glass (current)
+Supersedes the plain frosted-glass recipe in "Implementation notes" below. Every surface — cards, sidebar, mobile header, modals, menus, toasts — is **Liquid Glass**, defined once in `apps/web/app/globals.css` and reached through the shared primitives, never re-implemented inline:
+- `Card` — `variant="glass"` (clear) / `variant="solid"` (teal-tinted primary panel). Both are Liquid Glass.
+- `Button` — `primary` is the glossy accent "gel"; `secondary`/`accent` are glass capsules; all variants get the springy press.
+- Raw classes for hand-rolled surfaces: `liquid-glass` (+ `liquid-glass-tint`), `liquid-control` (small capsules, active nav pill), `liquid-gel`, `liquid-press`, `liquid-bubble` (raised icon tiles). Floating menus/modals add `bg-surface-card/70–80` over `liquid-glass` for text legibility.
+
+What makes it read as Liquid Glass rather than frosted glass:
+- **Clearer** than frosted glass (moderate blur, boosted saturation/brightness) over **moving color** — drifting orbs in the root layout. Glass over a static background looks like a tint.
+- **Edge lensing** from layered inset shadows: bright top-left rim, faint bottom-right rim, light pooled under the top edge, darker band at the bottom for thickness.
+- **Light that responds**: a specular glow and a rim catch-light follow the pointer (`LiquidPointer.tsx` writes `--lg-x/--lg-y` once for the whole app). Disabled on touch devices and under reduced motion.
+- **Gel-like interaction**: controls compress and spring back with a slight overshoot.
+- **Floating chrome**: the sidebar and mobile header float inset from the viewport edges as rounded panels/capsules.
+
+Rules:
+- Never put Tailwind `shadow-*` or `ring-*` on a glass surface — both are box-shadows and replace the inset rim highlights. Use a `border-*` color (and optionally a faint `bg-*` tint) for emphasis instead.
+- True refraction (SVG displacement in `backdrop-filter`) is deliberately not used — Chromium-only and expensive across many panels.
+
 ## Widget patterns worth reusing — now wired to this project's modules
 - **Circular gauge** (the AC temperature dial in the reference) → **Progress Tracker widget**: today's goal-completion % as a radial gauge.
 - **Line/area chart with a highlighted data point and tooltip** (the Energy Usage card) → **Expense Tracker widget**: spending trend over the last 30 days.

@@ -40,7 +40,7 @@ export default async function ProgressPage() {
             "high priority" is the user's own explicit signal, not a
             derived staleness/due-date heuristic. */}
         {dashboard && dashboard.highPriority.length > 0 && (
-          <Card variant="solid" className="mt-4 p-6 ring-1 ring-amber-400/30">
+          <Card variant="solid" className="mt-4 border-amber-400/35 bg-amber-400/[0.04] p-6">
             <p className="text-sm font-medium text-amber-300">🔥 High priority</p>
             <div className="mt-3 space-y-2">
               {dashboard.highPriority.map((item) => (

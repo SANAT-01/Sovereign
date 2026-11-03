@@ -208,7 +208,7 @@ export function ItemCard({
     return (
       <Card
         variant="glass"
-        className={`p-4 ${!item.doneToday ? "ring-1 ring-amber-400/40 border-amber-400/30" : ""}`}
+        className={`p-4 ${!item.doneToday ? "border-amber-400/40 bg-amber-400/[0.04]" : ""}`}
       >
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
@@ -320,7 +320,7 @@ export function ItemCard({
     return (
       <Card
         variant="glass"
-        className={`p-4 ${urgent ? "ring-1 ring-amber-400/40 border-amber-400/30" : ""}`}
+        className={`p-4 ${urgent ? "border-amber-400/40 bg-amber-400/[0.04]" : ""}`}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">

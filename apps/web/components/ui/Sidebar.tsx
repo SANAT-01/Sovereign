@@ -38,8 +38,12 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const pathname = usePathname();
 
   return (
+    // Floating Liquid Glass panel: an off-canvas drawer below lg, and on lg+
+    // a sticky panel inset from the viewport edges (iPadOS-style floating
+    // sidebar). lg:transform-none matters — a transformed ancestor breaks
+    // the `background-attachment: fixed` pointer highlight in Chromium.
     <aside
-      className={`fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col justify-between border-r border-white/15 bg-white/[0.025] px-4 py-6 backdrop-blur-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${
+      className={`liquid-glass liquid-glass-tint fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col justify-between rounded-r-3xl px-3 py-6 transition-transform duration-300 ease-out lg:sticky lg:top-3 lg:m-3 lg:h-[calc(100vh-1.5rem)] lg:rounded-3xl lg:transform-none ${
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
@@ -66,10 +70,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 key={href}
                 href={href}
                 onClick={onClose}
-                className={`flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors duration-150 ${
+                aria-current={active ? "page" : undefined}
+                className={`liquid-press flex items-center gap-3 rounded-full border px-4 py-2.5 text-sm font-medium ${
                   active
-                    ? "bg-accent/15 text-accent"
-                    : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                    ? "liquid-control text-accent"
+                    : "border-transparent text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
                 }`}
               >
                 <ItemIcon width={18} height={18} />

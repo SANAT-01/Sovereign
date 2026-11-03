@@ -108,8 +108,8 @@ export function AddItemModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-surface-card/95 p-6 shadow-xl backdrop-blur-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+      <div className="liquid-glass w-full max-w-md rounded-[2rem] bg-surface-card/70 p-6">
         <p className="text-base font-semibold text-white">Add item</p>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">

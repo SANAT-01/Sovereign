@@ -90,7 +90,7 @@ function MerchantPicker({
         createPortal(
           <div
             ref={panelRef}
-            className="fixed z-50 w-64 rounded-2xl border border-white/10 bg-[#0d3b36] p-2 shadow-xl"
+            className="liquid-glass fixed z-50 w-64 rounded-2xl bg-surface-card/80 p-2"
             style={{ top: coords.top, left: coords.left }}
           >
             <input

@@ -27,6 +27,19 @@ const config: Config = {
       backdropBlur: {
         xs: "2px",
       },
+      // Slow ambient drift for the colored orbs behind liquid-glass panels
+      // — gives the glass something moving to refract, so the
+      // translucency reads as "liquid" rather than a flat tint.
+      keyframes: {
+        drift: {
+          "0%": { transform: "translate3d(0, 0, 0) scale(1)" },
+          "100%": { transform: "translate3d(48px, -36px, 0) scale(1.15)" },
+        },
+      },
+      animation: {
+        drift: "drift 18s ease-in-out infinite alternate",
+        "drift-slow": "drift 26s ease-in-out infinite alternate-reverse",
+      },
       fontFamily: {
         sans: [
           "var(--font-sans)",

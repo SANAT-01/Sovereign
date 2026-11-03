@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "../ui/Button";
-import { CopyIcon, EditIcon, PlusIcon } from "../ui/icons";
+import { Card } from "../ui/Card";
+import { CopyIcon, EditIcon, PlusIcon, PinIcon, ChevronIcon } from "../ui/icons";
 import { PortfolioSectionCard } from "./PortfolioSectionCard";
+import { PortfolioItemRow } from "./PortfolioItemRow";
 import type { PortfolioSection, PortfolioItem, ItemKind } from "@/lib/portfolio-types";
 
 /**
@@ -17,6 +19,26 @@ export function PortfolioBoard({ initialSections }: { initialSections: Portfolio
   const [toast, setToast] = useState<string | null>(null);
   const [addingSection, setAddingSection] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState("");
+  // Every section starts collapsed — pinned items (below) stay one click
+  // away regardless, so the page opens as a scannable list of sections.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  function toggleSection(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const allExpanded = sections.length > 0 && sections.every((s) => expanded.has(s.id));
+  function toggleAll() {
+    setExpanded(allExpanded ? new Set() : new Set(sections.map((s) => s.id)));
+  }
+
+  const pinnedItems = sections.flatMap((s) => s.items.filter((i) => i.pinned));
+  const itemCount = sections.reduce((sum, s) => sum + s.items.length, 0);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -57,6 +79,8 @@ export function PortfolioBoard({ initialSections }: { initialSections: Portfolio
     });
     const section = await res.json();
     setSections((ss) => [...ss, { ...section, items: [] }]);
+    // A brand-new section is opened straight away so items can be added to it.
+    setExpanded((prev) => new Set(prev).add(section.id));
     setNewSectionTitle("");
     setAddingSection(false);
   }
@@ -132,32 +156,75 @@ export function PortfolioBoard({ initialSections }: { initialSections: Portfolio
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={copyEverything}>
+      {/* Toolbar as one floating glass pill rather than loose buttons. */}
+      <div className="liquid-glass flex flex-wrap items-center gap-1.5 rounded-3xl p-1.5 sm:rounded-full">
+        <Button type="button" className="px-4 py-2" onClick={copyEverything}>
           <CopyIcon width={15} height={15} />
-          Copy everything as text
+          Copy everything
         </Button>
         <Button
           type="button"
-          variant="secondary"
-          className={editMode ? "border-accent/40 bg-accent/15 text-accent" : ""}
+          variant="ghost"
+          aria-pressed={editMode}
+          className={`px-4 py-2 ${editMode ? "bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
           onClick={() => setEditMode((v) => !v)}
         >
           <EditIcon width={16} height={16} />
           {editMode ? "Done editing" : "Edit layout"}
         </Button>
+        {sections.length > 0 && (
+          <div className="ml-auto flex items-center gap-1">
+            <span className="hidden px-2 text-xs text-slate-400 sm:inline">
+              {sections.length} {sections.length === 1 ? "section" : "sections"} · {itemCount}{" "}
+              {itemCount === 1 ? "item" : "items"}
+            </span>
+            <Button type="button" variant="ghost" className="px-3.5 py-2" onClick={toggleAll}>
+              <ChevronIcon
+                width={14}
+                height={14}
+                className={`transition-transform duration-200 ${allExpanded ? "-rotate-90" : "rotate-90"}`}
+              />
+              {allExpanded ? "Collapse all" : "Expand all"}
+            </Button>
+          </div>
+        )}
       </div>
 
+      {pinnedItems.length > 0 && (
+        <Card className="mt-4 overflow-hidden border-amber-300/25 bg-amber-300/[0.035] p-1.5">
+          <div className="flex items-center gap-2 px-3 pb-1.5 pt-2.5">
+            <PinIcon width={13} height={13} fill="currentColor" className="text-amber-400" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-300">Pinned</span>
+          </div>
+          {pinnedItems.map((item) => (
+            <PortfolioItemRow
+              key={item.id}
+              item={item}
+              editMode={false}
+              onCopy={copyToClipboard}
+              onTogglePin={handleTogglePin}
+              onEdit={handleEditItem}
+              onDelete={handleDeleteItem}
+            />
+          ))}
+        </Card>
+      )}
+
       {sections.length === 0 ? (
-        <p className="mt-6 text-sm text-slate-400">
-          Nothing set up yet — add a section (Profiles, Documents, Contact — or anything you want) to get started.
-        </p>
+        <Card className="mt-4 px-6 py-8 text-center">
+          <p className="text-sm text-slate-300">Nothing set up yet.</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Switch to Edit layout and add a section — Profiles, Documents, Contact, or anything you want.
+          </p>
+        </Card>
       ) : (
-        <div className="mt-5 space-y-6">
+        <div className="mt-4 space-y-3">
           {sections.map((section) => (
             <PortfolioSectionCard
               key={section.id}
               section={section}
+              expanded={expanded.has(section.id)}
+              onToggle={() => toggleSection(section.id)}
               editMode={editMode}
               onCopy={copyToClipboard}
               onRename={handleRenameSection}
@@ -173,20 +240,21 @@ export function PortfolioBoard({ initialSections }: { initialSections: Portfolio
       )}
 
       {editMode && (
-        <div className="mt-4">
+        <div className="mt-3">
           {addingSection ? (
-            <div className="flex items-center gap-2 rounded-2xl border border-dashed border-white/15 p-3">
+            <div className="liquid-glass flex items-center gap-2 rounded-3xl p-2 sm:rounded-full">
               <input
                 value={newSectionTitle}
                 onChange={(e) => setNewSectionTitle(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddSection()}
                 placeholder="Section name (e.g. Visa Status, References)"
                 autoFocus
-                className="flex-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+                className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
               />
-              <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={handleAddSection}>
+              <Button type="button" className="px-4 py-2" onClick={handleAddSection}>
                 Add
               </Button>
-              <Button type="button" variant="ghost" className="px-3 py-1.5 text-xs" onClick={() => setAddingSection(false)}>
+              <Button type="button" variant="ghost" className="px-3.5 py-2" onClick={() => setAddingSection(false)}>
                 Cancel
               </Button>
             </div>
@@ -194,7 +262,7 @@ export function PortfolioBoard({ initialSections }: { initialSections: Portfolio
             <button
               type="button"
               onClick={() => setAddingSection(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/15 py-3 text-sm text-slate-400 transition-colors hover:border-accent/30 hover:text-accent"
+              className="flex w-full items-center justify-center gap-2 rounded-3xl border border-dashed border-white/15 bg-white/[0.02] py-3.5 text-sm text-slate-400 backdrop-blur-xl transition-colors hover:border-accent/40 hover:bg-accent/[0.05] hover:text-accent"
             >
               <PlusIcon width={15} height={15} />
               Add a new section
@@ -204,7 +272,10 @@ export function PortfolioBoard({ initialSections }: { initialSections: Portfolio
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full border border-accent/30 bg-surface-card px-4 py-2 text-sm font-medium text-accent shadow-xl">
+        <div
+          role="status"
+          className="liquid-glass fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-5 py-2.5 text-sm font-medium text-accent"
+        >
           {toast}
         </div>
       )}

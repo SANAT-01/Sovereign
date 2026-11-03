@@ -21,7 +21,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       {/* Mobile-only top bar — hidden on lg+ where the sidebar is always visible. */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-surface/80 px-4 backdrop-blur-xl lg:hidden">
+      {/* Floating capsule (top-2 + h-11 = 52px) — still clears the pt-14 below. */}
+      <header className="liquid-glass liquid-glass-tint fixed inset-x-3 top-2 z-30 flex h-11 items-center gap-3 rounded-full px-4 lg:hidden">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -36,7 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {open && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />
