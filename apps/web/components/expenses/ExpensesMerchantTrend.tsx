@@ -18,7 +18,7 @@ const ACCENT = "#2dd4a0";
 type TransactionType = "debit" | "credit";
 
 const tooltipStyle = {
-  background: "#0d3b36",
+  background: "#16201f",
   border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 12,
   fontSize: 12,
@@ -90,7 +90,7 @@ function MerchantPicker({
         createPortal(
           <div
             ref={panelRef}
-            className="liquid-glass fixed z-50 w-64 rounded-2xl bg-surface-card/80 p-2"
+            className="liquid-glass fixed z-50 w-64 rounded-2xl bg-surface-glass/90 p-2"
             style={{ top: coords.top, left: coords.left }}
           >
             <input

@@ -13,9 +13,11 @@
 
 ## Surface treatment: iOS-style Liquid Glass (current)
 Supersedes the plain frosted-glass recipe in "Implementation notes" below. Every surface — cards, sidebar, mobile header, modals, menus, toasts — is **Liquid Glass**, defined once in `apps/web/app/globals.css` and reached through the shared primitives, never re-implemented inline:
-- `Card` — `variant="glass"` (clear) / `variant="solid"` (teal-tinted primary panel). Both are Liquid Glass.
+- `Card` — `variant="glass"` (clear) / `variant="solid"` (graphite-tinted primary panel, `surface.glass` token). Both are Liquid Glass.
 - `Button` — `primary` is the glossy accent "gel"; `secondary`/`accent` are glass capsules; all variants get the springy press.
-- Raw classes for hand-rolled surfaces: `liquid-glass` (+ `liquid-glass-tint`), `liquid-control` (small capsules, active nav pill), `liquid-gel`, `liquid-press`, `liquid-bubble` (raised icon tiles). Floating menus/modals add `bg-surface-card/70–80` over `liquid-glass` for text legibility.
+- Raw classes for hand-rolled surfaces: `liquid-glass` (+ `liquid-glass-tint`), `liquid-control` (small capsules, active nav pill), `liquid-gel`, `liquid-press`, `liquid-bubble` (raised icon tiles). Floating menus/modals add `bg-surface-glass/85–90` over `liquid-glass` for text legibility.
+
+**Tone: restrained, near-neutral glass.** The teal accent is for meaning (active state, primary action, chart series), not for surfaces. Glass tints use the graphite `surface.glass` (#16201f), never the saturated `surface.card` teal; backdrop `saturate()` stays ≤125%; background washes and orbs stay at roughly 10% opacity or lower. Chart tooltips and slice gaps use `#16201f` too (the Progress category palette was re-validated against it with the dataviz validator).
 
 What makes it read as Liquid Glass rather than frosted glass:
 - **Clearer** than frosted glass (moderate blur, boosted saturation/brightness) over **moving color** — drifting orbs in the root layout. Glass over a static background looks like a tint.

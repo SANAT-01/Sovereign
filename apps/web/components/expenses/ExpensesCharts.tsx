@@ -25,7 +25,7 @@ const ACCENT = "#2dd4a0";
 const EXPENSE = "#e36b5c";
 
 const tooltipStyle = {
-  background: "#0d3b36",
+  background: "#16201f",
   border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 12,
   fontSize: 12,

@@ -6,7 +6,7 @@ import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip } from "re
 // Same tooltip surface as the full-size expense charts (ExpensesCharts.tsx)
 // — one consistent look for every chart in the app, mini or not.
 const TOOLTIP_STYLE: CSSProperties = {
-  background: "#0d3b36",
+  background: "#16201f",
   border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 10,
   fontSize: 11,

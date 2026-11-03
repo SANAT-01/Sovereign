@@ -15,6 +15,10 @@ const config: Config = {
         surface: {
           DEFAULT: "#0b1210",
           card: "#0d3b36",
+          // Near-neutral graphite with only a hint of teal — the tint for
+          // Liquid Glass panels, menus and tooltips. `card` is too saturated
+          // to sit behind every surface at once.
+          glass: "#16201f",
         },
         accent: {
           DEFAULT: "#2dd4a0",

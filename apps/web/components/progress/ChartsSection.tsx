@@ -29,7 +29,7 @@ import {
   type ProgressChartData,
 } from "@/lib/progress-types";
 
-// Validated against this app's actual card surface (#0d3b36) via the
+// Validated against this app's actual card surface (#16201f) via the
 // dataviz skill's palette validator — exact documented slot order
 // (blue, orange, aqua, yellow, magenta) preserved, since the ordering
 // itself (not just the hues) is the colorblind-safety mechanism. Used only
@@ -37,7 +37,7 @@ import {
 // charts are single-series and use the app's own accent teal throughout.
 const CATEGORY_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181"];
 const ACCENT = "#2dd4a0";
-const CHART_SURFACE = "#0d3b36";
+const CHART_SURFACE = "#16201f";
 
 const STAGE_LABELS: Record<string, string> = {
   applied: "Applied",

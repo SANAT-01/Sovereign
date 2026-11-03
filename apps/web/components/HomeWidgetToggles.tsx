@@ -46,7 +46,7 @@ export function HomeWidgetToggles({ initialWidgets }: { initialWidgets: string[]
         Customize home
       </button>
       {open && (
-        <div className="liquid-glass absolute right-0 top-7 z-20 w-56 rounded-2xl bg-surface-card/70 p-3">
+        <div className="liquid-glass absolute right-0 top-7 z-20 w-56 rounded-2xl bg-surface-glass/85 p-3">
           <p className="mb-2 text-xs font-medium text-slate-300">Show on home</p>
           <ul className="space-y-1.5">
             {AVAILABLE_MODULES.map((mod) => (

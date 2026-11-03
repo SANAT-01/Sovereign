@@ -226,7 +226,7 @@ export function ExpensesHeatmap() {
 
         {tooltip && (
           <div
-            className="absolute z-20 -translate-x-1/2 -translate-y-[115%] whitespace-nowrap rounded-lg border border-white/10 bg-[#0d3b36] px-2.5 py-1.5 text-xs text-white shadow-lg"
+            className="absolute z-20 -translate-x-1/2 -translate-y-[115%] whitespace-nowrap rounded-lg border border-white/10 bg-surface-glass px-2.5 py-1.5 text-xs text-white shadow-lg"
             style={{ left: tooltip.x, top: tooltip.y }}
           >
             {tooltip.text}

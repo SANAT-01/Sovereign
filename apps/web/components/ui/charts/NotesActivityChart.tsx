@@ -35,7 +35,7 @@ export function NotesActivityChart() {
             <Tooltip
               cursor={{ fill: "rgba(255,255,255,0.05)" }}
               contentStyle={{
-                background: "#0d3b36",
+                background: "#16201f",
                 border: "1px solid rgba(255,255,255,0.1)",
                 borderRadius: 12,
                 fontSize: 12,
