@@ -1,0 +1,2216 @@
+{
+  "name": "Resume Generator API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resume/tailor",
+        "responseMode": "responseNode",
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "id": "ab0030db-d31e-5e64-abc5-08bd3f19e6c5",
+      "name": "Intake",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ],
+      "webhookId": "5d4b72a5-498e-5125-9224-a5dc1378e3b9",
+      "notes": "POST multipart/form-data: tex and/or pdf binaries, plus jd, title, company, skills. Auth is n8n's own Header Auth - attach a Header Auth credential with Name 'x-api-key' and the API's N8N_RESUME_API_KEY as the value. n8n answers a bad key with 403 before this workflow starts, so the key lives in the credential store and never in this JSON. responseMode=responseNode so the folder is created before the 202 goes out."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a3",
+              "name": "llmUrl",
+              "type": "string",
+              "value": "https://llmapi.sanattudu.tech/v1/chat/completions"
+            },
+            {
+              "id": "a4",
+              "name": "model",
+              "type": "string",
+              "value": "auto"
+            },
+            {
+              "id": "a9",
+              "name": "driveFolderId",
+              "type": "string",
+              "value": "160jIEwf2klSmB-a7GUzBbACZErGZ0IQ-"
+            },
+            {
+              "id": "c1",
+              "name": "compileUrl",
+              "type": "string",
+              "value": "http://latex:8080/compile"
+            },
+            {
+              "id": "c2",
+              "name": "compileToken",
+              "type": "string",
+              "value": "442d647c3fe05de9595eb66dbd3653bb0c3d9f42b4c45dab2b061ddbfdbe7947"
+            },
+            {
+              "id": "c3",
+              "name": "maxCompileRetries",
+              "type": "number",
+              "value": 3
+            },
+            {
+              "id": "c4",
+              "name": "pdfName",
+              "type": "string",
+              "value": "SanatTudu.pdf"
+            },
+            {
+              "id": "rc",
+              "name": "resumeConstraints",
+              "type": "string",
+              "value": "Never alter the stated years of experience; keep it exactly as the source resume has it.\nKeep the Jetson Nano AI/ML project.\nKeep a small amount of AI, ML and agent skills where the role makes them relevant."
+            },
+            {
+              "id": "rl",
+              "name": "resumeLatex",
+              "type": "string",
+              "value": "={{ $('Resume Source').first().json.resumeLatex }}"
+            },
+            {
+              "id": "p-fullName",
+              "name": "fullName",
+              "type": "string",
+              "value": "Sanat Tudu"
+            },
+            {
+              "id": "p-email",
+              "name": "email",
+              "type": "string",
+              "value": "sanat.tudu.tech@gmail.com"
+            },
+            {
+              "id": "p-phone",
+              "name": "phone",
+              "type": "string",
+              "value": "+91 9836787369"
+            },
+            {
+              "id": "p-linkedin",
+              "name": "linkedin",
+              "type": "string",
+              "value": "https://www.linkedin.com/in/sanattudu/"
+            },
+            {
+              "id": "p-github",
+              "name": "github",
+              "type": "string",
+              "value": "https://github.com/sanat-01"
+            },
+            {
+              "id": "p-portfolio",
+              "name": "portfolio",
+              "type": "string",
+              "value": "https://sanattudu.tech"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "2dd69bd2-dcae-5aa0-a2b4-aa4c9bd40993",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -80,
+        0
+      ],
+      "notes": "Everything environment-specific except the API key, which is a Header Auth credential on the webhook nodes. resumeLatex is the HOUSE TEMPLATE, used only when a request uploads a PDF instead of a .tex."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Holds the master resume. String.raw + a code editor is the only place in n8n\n// that preserves BOTH real newlines and backslashes (\\newcommand, \\textbf, \\tiny).\nconst resumeLatex = String.raw`%-------------------------\n% Resume of Sanat Tudu\n% Based on \"Rezume\" by Nanu Panchamurthy (MIT), itself based on github.com/sb2nov/resume\n% One-page version: single-column, ATS-friendly layout (no tables for content),\n% projects section showcasing system design, condensed experience.\n%-------------------------\n\n%------------PACKAGES----------------\n\\documentclass[a4paper,10pt]{article}\n\n\\usepackage{verbatim}\n\\usepackage{needspace} % keeps a project heading together with its first bullets\n\\usepackage{titlesec}\n\\usepackage{color}\n\\usepackage{enumitem}\n\\usepackage{fancyhdr}\n\\usepackage{tabularx}\n\\usepackage{latexsym}\n\\usepackage{marvosym}\n\\usepackage[empty]{fullpage}\n\\usepackage[hidelinks]{hyperref}\n\\usepackage[normalem]{ulem}\n\\usepackage[english]{babel}\n%-----------------------------------------\n\n\\input glyphtounicode % maps glyphs to unicode so ATS parsers read the text correctly\n\\pdfgentounicode=1\n\\pdfinterwordspaceon % write real space characters into the PDF so words never run together\n\\hyphenpenalty=10000 \\exhyphenpenalty=10000 % never hyphenate (ATS reads \"idem-potency\" as two words)\n\n%----------FONT OPTIONS-------------------\n\\usepackage[T1]{fontenc} % real ~ glyph and clean text extraction for ATS\n\\usepackage[default]{sourcesanspro}\n\\urlstyle{same}\n%-----------------------------------------\n\n%----------MARGIN OPTIONS-----------------\n\\pagestyle{fancy}\n\\fancyhf{}\n\\renewcommand{\\headrulewidth}{0in}\n\\renewcommand{\\footrulewidth}{0in}\n\\setlength{\\tabcolsep}{0in}\n\n\\addtolength{\\oddsidemargin}{-0.5in}\n\\addtolength{\\topmargin}{-0.95in}\n\\addtolength{\\textwidth}{1.0in}\n\\addtolength{\\textheight}{2.0in}\n\n\\raggedbottom{}\n\\raggedright{}\n%------------------------------------------\n\n%--------SECTIONING COMMANDS---------\n\\titleformat{\\section}\n  {\\large\\bfseries}{}\n    {0em}{\\color{blue}\\MakeUppercase}[\\color{black}\\titlerule\\vspace{0pt}]\n\\titlespacing*{\\section}{0pt}{2pt}{1pt}\n%-------------------------------------\n\n%--------REDEFINITIONS----------------\n\\renewcommand\\labelitemii{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}\n\\renewcommand{\\ULdepth}{2pt}\n%-------------------------------------\n\n%--------CUSTOM COMMANDS--------------\n% One bullet point\n\\newcommand{\\resumeItem}[1]{\n  \\item\\small{#1}\n}\n\n\\newcommand{\\resumeItemListStart}{\\begin{itemize}[rightmargin=0.11in, topsep=1pt, itemsep=0pt, parsep=0pt, partopsep=0pt]}\n\\newcommand{\\resumeItemListEnd}{\\end{itemize}}\n\n% Skills row: plain text \"Label: values\" (no table, so ATS reads it in order)\n\\newcommand{\\resumeSkill}[2]{\n  \\item\\small{\\textbf{#1:} #2}\n}\n\n% Two-line heading: bold title + right-aligned date, italic subtitle + right-aligned place\n\\newcommand{\\resumeSubheading}[4]{\n  \\item\n  \\textbf{#1} \\hfill #2 \\\\\n  \\textit{\\small #3} \\hfill \\textit{\\small #4}\n}\n\n% Second role under the same employer (company name is written only once)\n\\newcommand{\\resumeRole}[2]{\n  \\item\n  \\textit{\\small #1} \\hfill \\textit{\\small #2}\n}\n\n% Project heading: bold name | stack\n\\newcommand{\\resumeProjectHeading}[2]{\n  \\Needspace{3\\baselineskip}\n  \\item\n  \\textbf{#1} \\small{$|$ \\textit{#2}}\n}\n\n\\newcommand{\\resumeSubHeadingListStart}{\\begin{itemize}[leftmargin=0.15in, label={}, topsep=0pt, itemsep=0pt, parsep=0pt]}\n\\newcommand{\\resumeSubHeadingListEnd}{\\end{itemize}}\n\\newcommand{\\resumeHeadingListStart}{\\begin{itemize}[leftmargin=0.15in, label={}, topsep=0pt, itemsep=0pt, parsep=0pt]}\n\\newcommand{\\resumeHeadingListEnd}{\\end{itemize}}\n%-------------------------------------------\n\n%__________________RESUME____________________\n\\begin{document}\n\n%-----------CONTACT DETAILS (centered, plain text -> parses cleanly)------------\n\\begin{center}\n  {\\Huge \\textbf{Sanat Tudu}} \\\\[3pt]\n  \\small Software Engineer \\ $|$ \\ +91 9836787369 \\ $|$ \\ \\href{mailto:sanat.tudu.tech@gmail.com}{sanat.tudu.tech@gmail.com} \\\\[1pt]\n  \\small \\href{https://github.com/sanat-01}{github.com/sanat-01} \\ $|$ \\ \\href{https://www.linkedin.com/in/sanattudu/}{linkedin.com/in/sanattudu} \\ $|$ \\ \\href{https://sanattudu.tech}{https://sanattudu.tech}\n\\end{center}\n\\vspace{-8pt}\n\n%-----------SUMMARY--------------------------\n\\section{Summary}\n\\small{\n   Full-Stack Software Engineer specializing in event-driven distributed backend systems and applied computer-vision/edge AI. Experienced in building production systems with \\textbf{Node/NestJS}, \\textbf{React/Next.js}, and \\textbf{Docker}, and designing CI/CD pipelines and self-hosted cloud infrastructure on \\textbf{AWS EC2}. Proven expertise in event-driven pipelines (\\textbf{Kafka}, \\textbf{RabbitMQ}) and training/deploying \\textbf{PyTorch}/\\textbf{ResNet18} models optimized with \\textbf{TensorRT} on \\textbf{Jetson Nano} edge hardware. Self-taught, eager to pick up new tools, and owns project delivery end-to-end.\n}\n\n%--------------SKILLS------------------------\n\\section{Technical Skills}\n  \\resumeHeadingListStart{}\n    \\resumeSkill{Languages \\& Core Web}{TypeScript, JavaScript, Python, Java, C++, HTML5, CSS3}\n    \\resumeSkill{Frontend}{React.js, Next.js, SSR/CSR, Core Web Vitals, Tailwind CSS, Material-UI (MUI), Figma, Redux Toolkit, Zustand, Context API}\n    \\resumeSkill{Backend Frameworks \\& APIs}{Node.js, NestJS, Express.js, Flask, REST APIs, GraphQL, JWT, OAuth}\n    \\resumeSkill{Databases \\& Messaging}{PostgreSQL, MongoDB, MySQL, Redis, Apache Kafka, RabbitMQ}\n    \\resumeSkill{System Design \\& Architecture}{Distributed Systems, Event-Driven Architecture, Caching, Outbox Pattern, Fan-out, Load Balancing, Idempotency, Database Sharding/Replication, CDN, Circuit Breakers, Rate Limiting Algorithms, Exponential Backoff, Dead-Letter Queues}\n    \\resumeSkill{Cloud \\& DevOps}{AWS (EC2), Docker, Kubernetes, CI/CD (Jenkins), Nginx, Traefik, Linux, Git/GitHub, Let's Encrypt}\n    \\resumeSkill{Machine Learning \\& Computer Vision}{Machine Learning, Deep Learning, NLP, PyTorch, TensorFlow, Scikit-learn, NumPy, Pandas, Computer Vision, ResNet18/Transfer Learning, TensorRT, Edge AI (Jetson Nano)}\n    \\resumeSkill{Tools \\& Practices}{Agile/Scrum, Spec-Driven Development, Cross-functional Collaboration, Stakeholder Communication, code review, technical documentation, Test Automation (Jest, React Testing Library, Playwright, Storybook), Observability, Strapi CMS, Mixpanel, Facebook Pixel, TikTok Pixel, Google Tag Manager, n8n}\n  \\resumeHeadingListEnd{}\n\n%-----------PROJECTS--------------------------\n\\section{Projects}\n  \\resumeSubHeadingListStart{}\n\n    \\resumeProjectHeading{Scalable Feed System}{Next.js, Node.js, PostgreSQL, Kafka, Redis, Nginx, Docker}\n    \\resumeItemListStart{}\n      \\resumeItem{Implemented fan-out-on-write feeds: a post and its outbox record commit in one PostgreSQL transaction, are relayed to Kafka by polling using row-level locking (SKIP LOCKED), and fanned out by consumer-group workers that scale horizontally into per-user Redis feed lists.}\n      \\resumeItem{Served reads from per-user Redis feed lists and a post cache instead of hitting PostgreSQL directly, cutting p95 read latency from \\textbf{\\textasciitilde{}390ms to roughly \\textasciitilde{}70ms} in local load tests; PostgreSQL remains the source of truth (AOF persistence), with JWT auth behind an Nginx gateway and Traefik-managed HTTPS.}\n    \\resumeItemListEnd{}\n\n    \\resumeProjectHeading{Distributed Rate Limiter}{Redis, Nginx, Docker, Next.js}\n    \\resumeItemListStart{}\n      \\resumeItem{Engineered a configurable limiter (algorithm, limit, window; default 10 requests/minute) behind an Nginx load balancer with shared Redis counters for consistent cross-instance enforcement, plus selectable fail-open / fail-closed behavior on Redis outage \\textemdash{} held up to roughly \\textbf{800 req/sec across 4 replica containers} in local load testing.}\n    \\resumeItemListEnd{}\n\n    \\resumeProjectHeading{Multi-Channel Notification System}{Node.js, Express.js, RabbitMQ, Redis, Next.js, Docker}\n    \\resumeItemListStart{}\n      \\resumeItem{Architected an event-driven pipeline where an Express API fans events out to per-channel RabbitMQ queues (push, email) consumed by independent workers; Redis idempotency keys and claim leases prevent duplicates under at-least-once delivery \\textemdash{} confirmed zero duplicate sends across roughly 40 simulated worker-crash trials.}\n    \\resumeItemListEnd{}\n\n    \\resumeProjectHeading{Jetson Nano Autonomous Rover (self-driven, independent build)}{PyTorch, ResNet18, TensorRT, Computer Vision}\n    \\resumeItemListStart{}\n      \\resumeItem{Built and deployed a self-driving edge robot on Jetson Nano: trained PyTorch/ResNet18 transfer-learning models for road-following, collision-avoidance and object-following from camera input.}\n      \\resumeItem{Converted trained models to TensorRT for real-time on-device inference, lifting inference speed from roughly \\textbf{\\textasciitilde{}8 FPS to the \\textasciitilde{}25\\textendash{}30 FPS} range needed for live closed-loop steering and obstacle response.}\n    \\resumeItemListEnd{}\n\n    \\resumeProjectHeading{Self-Hosted Production Platform \\& CI/CD}{Docker, Jenkins, Traefik, Nginx, PostgreSQL, Redis, Linux}\n    \\resumeItemListStart{}\n      \\resumeItem{Automated builds, deploys and health checks with a Jenkins CI/CD pipeline on a Linux VPS running multiple containerized apps behind Traefik (host routing, automatic Let's Encrypt TLS) with shared PostgreSQL and Redis \\textemdash{} brought deployment time down from \\textbf{\\textasciitilde{}12 min to roughly \\textasciitilde{}4\\textendash{}5 min}.}\n    \\resumeItemListEnd{}\n\n  \\resumeSubHeadingListEnd{}\n\n%-----------EXPERIENCE-----------------------\n\\section{Work Experience}\n\\resumeSubHeadingListStart\n\n\\resumeSubheading\n{Winjit Technologies Pvt. Ltd.}{Nashik, Maharashtra, India}\n{Software Engineer}{Apr 2026 -- Oct 2026}\n\\resumeItemListStart{}\n\\resumeItem{Enabled \\textbf{\\textasciitilde{}50K concurrent users} on a NestJS backend by shipping REST APIs, authentication modules and service integrations for a K-12 educational institution network in India.}\n\\resumeItem{Shortened code review turnaround by \\textbf{\\textasciitilde{}15\\%} by replacing ad hoc endpoint logic with reusable, modular service layers and efficient queries across frontend, backend and DevOps using Git, coordinating closely with stakeholders across teams.}\n\\resumeItemListEnd{}\n\n\\resumeRole{Software Developer}{Jul 2024 -- Mar 2026}\n\\resumeItemListStart{}\n\\resumeItem{Reduced page load time by \\textbf{\\textasciitilde{}25\\%} and lifted lead conversion by \\textbf{\\textasciitilde{}12\\%} by rebuilding fintech microsites with optimized, server-rendered React.js pages.}\n\\resumeItem{Lowered Time-to-First-Byte by \\textbf{\\textasciitilde{}30\\%} and lifted user engagement by \\textbf{\\textasciitilde{}15\\%} by architecting a Next.js social app with hybrid SSR/CSR rendering.}\n\\resumeItem{Trimmed cold-start time by \\textbf{\\textasciitilde{}15\\%} and eliminated staging/production environment drift by building a multi-stage production Dockerfile and containerizing the application on AWS EC2.}\n\\resumeItem{Increased indexed pages by \\textbf{40\\%} and lifted social click-through by \\textbf{\\textasciitilde{}20\\%} by automating sitemap.xml/robots.txt generation and SEO metadata with Open Graph previews.}\n\\resumeItem{Slashed marketing's engineering dependency by \\textbf{\\textasciitilde{}60\\%} and doubled non-technical teams' video-publishing speed by integrating Strapi CMS with secure custom video embeds.}\n\\resumeItem{Curbed ad spend waste by \\textbf{\\textasciitilde{}18\\%} and drove two major feature optimizations by instrumenting Mixpanel funnel analytics and configuring TikTok Pixel via Google Tag Manager.}\n\\resumeItem{Boosted successful sign-ins by \\textbf{\\textasciitilde{}25\\%} by enabling OAuth sign-in for Google, Apple, and Snapchat.}\n\\resumeItemListEnd{}\n\n\\resumeSubHeadingListEnd\n\n%-----------EDUCATION-------------------------\n\\section{Education}\n  \\resumeHeadingListStart{}\n    \\item \\textbf{Indian Institute of Technology Bhilai} -- B.Tech in Data Science and Artificial Intelligence, 7.9 CGPA \\hfill Sep 2020 -- May 2024\n    \\item \\textbf{KVS Santragachi, Howrah} -- Class 12th, Computer Science (CBSE), 92\\% \\hfill July 2020\n  \\resumeHeadingListEnd{}\n\n\\end{document}`;\n\nif (!resumeLatex.includes('\\n')) {\n  throw new Error('resumeLatex has no real line breaks - it got flattened somewhere.');\n}\n\n// The item is rebuilt rather than replaced: the uploaded .tex / .pdf parts\n// are in item.binary and the extract nodes further down still need them.\nconst item = $input.first();\nreturn [{\n  json: { ...item.json, resumeLatex, resumeLines: resumeLatex.split('\\n').length },\n  binary: item.binary,\n}];\n"
+      },
+      "id": "add35eaa-5ee2-5f25-859a-7bacb4164f9b",
+      "name": "Resume Source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -290,
+        0
+      ],
+      "notes": "The house template. String.raw in a code editor is the only place in n8n that keeps BOTH real newlines and backslashes (\\newcommand, \\textbf, \\tiny)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-has-tex",
+              "leftValue": "={{ $json.hasTex }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "c957f63c-fc58-55ee-a13c-7eba494c16d6",
+      "name": "Has Tex?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        340,
+        0
+      ],
+      "notes": "True: the request uploaded a .tex, which is rewritten in place. False: only a PDF, so its text is poured into the house template."
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "tex",
+        "destinationKey": "baseTex",
+        "options": {}
+      },
+      "id": "9c33225c-2f84-51af-8738-f68c2cc210ef",
+      "name": "Extract Tex",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        550,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "pdf",
+        "options": {}
+      },
+      "id": "bfdefb3b-5f75-597e-9240-39dd87085ec2",
+      "name": "Extract PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        550,
+        150
+      ],
+      "notes": "Lays the PDF out as plain text. Spacing and bullet order come out imperfect; the prompt tells the model to reconstruct rather than invent."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turns one multipart request into the single row every later node reads.\n// Nothing downstream touches $json.body again.\nconst cfg = $('Config').first().json;\nconst req = $('Intake').first().json;\nconst extracted = $input.first().json || {};\nconst body = req.body || {};\n\nconst str = (v) => (v === undefined || v === null ? '' : String(v)).trim();\n\nconst jd = str(body.jd);\nif (!jd) throw new Error('jd (the job description) is required');\nif (jd.length > 20000) throw new Error('jd is ' + jd.length + ' characters, limit is 20000');\n\n// Which slot actually arrived decides how the resume is built:\n//   tex -> rewrite the applicant's own document, keeping their layout\n//   pdf -> extract the text and pour it into the house template\nconst hasTex = $('Resolve Upload').first().json.hasTex;\nconst kind = hasTex ? 'tex' : 'pdf';\nconst layout = hasTex ? 'applicant-template' : 'house-template';\n\n// extractFromFile names its output differently per operation.\nconst extractedText = String(extracted.baseTex || extracted.text || '').trim();\nif (!extractedText) {\n  throw new Error('could not read any text out of the uploaded ' + kind + ' file');\n}\nif (hasTex && !extractedText.includes('\\\\documentclass')) {\n  throw new Error('the uploaded .tex has no \\\\documentclass - it is not a full LaTeX document');\n}\n\n// A .tex is tailored in place. A PDF has no layout to keep, so the house\n// template becomes the skeleton and the extracted text becomes the facts.\nconst baseLatex = hasTex ? extractedText : cfg.resumeLatex;\nconst extractedFacts = hasTex ? '' : extractedText;\n\nconst company = str(body.company) || 'Unknown Company';\nconst title = str(body.title) || 'Unspecified Role';\n\n// Drive folder names: no path separators (they would silently nest), no\n// leading/trailing dots or spaces, and a cap so a pasted JD title cannot\n// produce an unusable folder.\nconst folderSafe = (s, fallback) => {\n  const v = String(s).replace(/[\\\\/]+/g, '-').replace(/\\s+/g, ' ')\n    .replace(/^[.\\s]+|[.\\s]+$/g, '').slice(0, 120).trim();\n  return v || fallback;\n};\n\nconst slug = (company + '-' + title).toLowerCase()\n  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'job';\n\n// Unique per execution, and what the app stores as external_job_id.\nconst jobId = 'job-' + $execution.id + '-' + Date.now().toString(36);\n\nconsole.log('job ' + jobId + ': ' + company + ' / ' + title +\n  ' (' + kind + ', ' + layout + ', jd ' + jd.length + ' chars)');\n\nreturn [{ json: {\n  jobId,\n  kind,\n  layout,\n  company,\n  title,\n  // Named 'description' because the cover-letter prompt and the tailoring\n  // prompt both already read that field.\n  description: jd,\n  skills: str(body.skills),\n  companyFolderName: folderSafe(company, 'Unknown Company'),\n  roleFolderName: folderSafe(title, 'Unspecified Role'),\n  baseLatex,\n  extractedFacts,\n  slug,\n  filename: 'resume-' + slug + '.tex',\n}}];\n"
+      },
+      "id": "dff917be-0d4a-516e-b4a7-4f29189ec81c",
+      "name": "Intake Normalise",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        0
+      ],
+      "notes": "The one place the request is interpreted. Everything downstream reads this node, never $json.body."
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=mimeType = 'application/vnd.google-apps.folder' and name = '{{ $json.companyFolderName.replace(/'/g, \"\\\\'\") }}' and '{{ $('Config').first().json.driveFolderId }}' in parents and trashed = false"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name)"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            },
+            {
+              "name": "includeItemsFromAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "235d3e2b-311c-5eb0-943c-fbd32396417d",
+      "name": "Find Company Folder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        970,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decides whether the company folder already exists, without the 'contains'\n// ambiguity of the Drive node. 0 matches -> create it. More than one match is\n// a Drive problem we cannot resolve, so we take the first and say so loudly.\nconst job = $('Intake Normalise').first().json;\nconst res = $input.first().json || {};\nconst body = res.body || res;\nconst files = (body && body.files) || [];\n\nif (files.length > 1) {\n  console.log('WARNING job ' + job.jobId + ': ' + files.length + ' folders named \"' +\n    job.companyFolderName + '\" - using the first. Fix the duplicates in Drive.');\n}\n\nreturn [{ json: {\n  ...job,\n  folderFound: files.length > 0,\n  companyFolderId: files.length ? files[0].id : '',\n}}];\n"
+      },
+      "id": "3aa4c749-5bc6-5f87-ab0b-5a9efc679668",
+      "name": "Company Folder Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-folder-exists",
+              "leftValue": "={{ $json.folderFound }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "0c6397fb-597b-54aa-b29a-8459cbe2b4a0",
+      "name": "Company Folder Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1390,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Intake Normalise').first().json.companyFolderName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.driveFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "416d239b-2be8-51e4-9483-c95789896a89",
+      "name": "Create Company Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1600,
+        150
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Both branches land here, and they arrive with different shapes: the \"found\"\n// branch still carries the whole job row, while the \"created\" branch carries\n// nothing but Drive's file metadata. So the row is re-read from Intake\n// Normalise rather than inherited, and only the folder id is taken from the\n// incoming item.\nconst job = $('Intake Normalise').first().json;\nconst item = $input.first().json || {};\nconst companyFolderId = item.companyFolderId || item.id || '';\n\nif (!companyFolderId) {\n  throw new Error('could not resolve a company folder for job ' + job.jobId +\n    ' - refusing to continue, Drive would put the files in My Drive root.');\n}\n\nreturn [{ json: { ...job, companyFolderId } }];\n"
+      },
+      "id": "5a074d36-96a0-5500-93ae-7ad5b12f4414",
+      "name": "Company Folder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        0
+      ],
+      "notes": "Both the found and the created branch land here. A Set node would not do: the created branch arrives as Drive file metadata with the job row gone."
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=mimeType = 'application/vnd.google-apps.folder' and name = '{{ $('Intake Normalise').first().json.roleFolderName.replace(/'/g, \"\\\\'\") }}' and '{{ $json.companyFolderId }}' in parents and trashed = false"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name)"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            },
+            {
+              "name": "includeItemsFromAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "e7a6e36b-7729-54d0-baa8-f02b0f3486ae",
+      "name": "Find Role Folder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1810,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Same find-or-create decision one level down: <company>/<role>/.\n// Two jobs for the same role at the same company deliberately share a folder\n// and overwrite, so re-running a role does not litter Drive with copies.\nconst job = $('Company Folder').first().json;\nconst res = $input.first().json || {};\nconst body = res.body || res;\nconst files = (body && body.files) || [];\n\nif (files.length > 1) {\n  console.log('WARNING job ' + job.jobId + ': ' + files.length + ' folders named \"' +\n    job.roleFolderName + '\" under ' + job.companyFolderName + ' - using the first.');\n}\n\nreturn [{ json: {\n  ...job,\n  roleFolderFound: files.length > 0,\n  roleFolderId: files.length ? files[0].id : '',\n}}];\n"
+      },
+      "id": "86f879fc-c9d2-5e40-b005-9617b7b23432",
+      "name": "Role Folder Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2020,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-role-folder",
+              "leftValue": "={{ $json.roleFolderFound }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "b56bca73-5acc-5dc8-9f4e-7e77c42350dd",
+      "name": "Role Folder Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2230,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Intake Normalise').first().json.roleFolderName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Company Folder').first().json.companyFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "5a9ca41f-7f8d-5020-8a6b-1eb2dd820d31",
+      "name": "Create Role Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2440,
+        150
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Same shape problem as Company Folder, one level down. This node's output is\n// the destination every artifact is uploaded to: <company>/<role>/.\nconst job = $('Company Folder').first().json;\nconst item = $input.first().json || {};\nconst roleFolderId = item.roleFolderId || item.id || '';\n\nif (!roleFolderId) {\n  throw new Error('could not resolve a role folder for job ' + job.jobId +\n    ' - refusing to continue, Drive would put the files in My Drive root.');\n}\n\nreturn [{ json: { ...job, roleFolderId } }];\n"
+      },
+      "id": "fc3f2e79-6122-54c1-a085-4014d880c981",
+      "name": "Role Folder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        0
+      ],
+      "notes": "The destination for every artifact: <driveFolderId>/<company>/<role>/."
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "description",
+        "options": {
+          "encoding": "utf8",
+          "fileName": "jd.txt"
+        }
+      },
+      "id": "85f56587-45ce-556a-8baa-84435b565766",
+      "name": "JD to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2650,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "name": "jd.txt",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Role Folder').first().json.roleFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "ff9cb0eb-1541-56b6-9162-16f243f057e8",
+      "name": "Upload JD",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2860,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      },
+      "notes": "The exact job description the resume was tailored against, kept with the output."
+    },
+    {
+      "parameters": {
+        "jsCode": "// The job's state lives in status.json inside its own Drive folder, not in\n// n8n. That is what lets the status webhook answer after an n8n restart, and\n// what lets any number of n8n workers serve the same job.\n//\n// Written BEFORE the webhook responds, so the app's first poll can never 404.\nconst job = $('Role Folder').first().json;\n\nreturn [{ json: {\n  ...job,\n  statusContent: JSON.stringify({\n    status: 'running',\n    jobId: job.jobId,\n    company: job.company,\n    title: job.title,\n    kind: job.kind,\n    layout: job.layout,\n    folderId: job.roleFolderId,\n    folderUrl: 'https://drive.google.com/drive/folders/' + job.roleFolderId,\n    startedAt: new Date().toISOString(),\n    files: [],\n  }, null, 2),\n  statusFilename: 'status.json',\n}}];\n"
+      },
+      "id": "d570d0bf-53f8-53cd-9ced-abff20c56239",
+      "name": "Status Running",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3070,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "statusContent",
+        "options": {
+          "encoding": "utf8",
+          "fileName": "status.json"
+        }
+      },
+      "id": "c1e9740d-2240-5ff7-b5e4-55d19888bd97",
+      "name": "Status File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        3280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "name": "status.json",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Role Folder').first().json.roleFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "396aaeb7-63d0-54d1-ae96-231f60c919e6",
+      "name": "Upload Status Running",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3490,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      },
+      "notes": "Created before the response, so the app's first poll always finds a marker. Its file id is what the done/failed PATCH nodes overwrite."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ jobId: $('Role Folder').first().json.jobId, folderId: $('Role Folder').first().json.roleFolderId, folderUrl: 'https://drive.google.com/drive/folders/' + $('Role Folder').first().json.roleFolderId, status: 'running' }) }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "37d616f7-31e0-5229-8b3d-8c8d599bfb3c",
+      "name": "Respond Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3700,
+        0
+      ],
+      "notes": "202, not 200: the work has only been accepted. The API's submit call times out at 30s while generation takes 1-3 min, so everything below here runs after the response has gone out."
+    },
+    {
+      "parameters": {
+        "jsCode": "// When the request carried a PDF alongside a .tex, the PDF is kept in the\n// folder as a reference copy - it is the document the applicant actually has.\n// Returning an empty array is how this branch opts out: no PDF, no upload,\n// and nothing else hangs off it.\nconst src = $('Resolve Upload').first();\nconst job = $('Role Folder').first().json;\nconst pdf = src.binary && src.binary.pdf;\n\nif (!pdf) return [];\n\nreturn [{\n  json: { ...job, sourcePdfName: 'source-resume.pdf' },\n  binary: { data: pdf },\n}];\n"
+      },
+      "id": "3e0ab8ad-4357-5e11-9b9e-0f8d07edc271",
+      "name": "Build Source PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3910,
+        150
+      ],
+      "notes": "Optional side branch. Returns [] when no PDF was uploaded, which simply ends the branch."
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.sourcePdfName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Role Folder').first().json.roleFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "b95eff2c-dc21-5ca6-8787-6d5112ed43d6",
+      "name": "Upload Source PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        4120,
+        150
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst job = $('Intake Normalise').first().json;\n\nconst system = [\n  'You are an expert technical resume writer who works directly in LaTeX.',\n  'You rewrite an existing LaTeX resume so it targets one specific job description.',\n  '',\n  'OUTPUT FORMAT',\n  '- Output ONLY valid, compilable LaTeX. No markdown fences, no commentary, no explanation.',\n  '- Start at \\\\documentclass and end at \\\\end{document}. Nothing before or after.',\n  '',\n  'STRUCTURE - DO NOT TOUCH',\n  '- Keep the original \\\\documentclass, every \\\\usepackage, and every custom command',\n  '  definition (\\\\resumeItem, \\\\resumeSkill, \\\\resumeSubheading, \\\\resumeProjectHeading,',\n  '  \\\\resumeRole, and all list Start/End macros) byte-for-byte identical.',\n  '- Do NOT add, remove or reorder packages. Do NOT define new commands.',\n  '- Do NOT invoke any command that is not already used in the source resume.',\n  '- Keep section order: Summary, Technical Skills, Projects, Work Experience, Education.',\n  '- Keep the contact block in the document body. Never move it to a header or footer.',\n  '',\n  'HONESTY',\n  '- NEVER invent employers, job titles, dates, degrees, experience years, certifications',\n  '- You should add those technologies or metrics if genuinely required in the role',\n  '- Previous skills should not be removed when matching with the JDs required set of skills, tools, technologies otherwise you can remove those',\n  '- Always keep small amount of AI,ML,agents skills to boost my profile if it is necessary to have it in this role',\n  '- You should never drop a project or skill related to the programming language which is asked in Job Description',\n  '- You can modify the facts already present in the source resume.',\n  '- Never change a number, percentage, date range or company name.',\n  '- You MAY reorder bullets, reword them, re-prioritise the skills list, and adjust',\n  '  the summary so the most relevant experience appears first.',\n  '- You MAY drop a bullet or a skill entirely if it is majorly irrelevant to this role.',\n  '- Mirror the vocabulary of the job description where it is factually honest to do so.',\n  '',\n  'ONE PAGE - HARD BUDGET',\n  'The source resume fits exactly one page. Your rewrite MUST also fit one page.',\n  'The Education section is last, so any overflow pushes it onto page 2. That is a failure.',\n  '- Your output must be NO LONGER than the input, measured in total characters.',\n  '  If your draft is longer, cut the least relevant content until it is shorter.',\n  '- Never exceed these counts (the source already sits at the maximum):',\n  '    at most 16 \\\\resumeItem bullets in the whole document',\n  '    at most 8 \\\\resumeSkill lines',\n  '    at most 5 \\\\resumeProjectHeading entries',\n  '    Summary at most 90 words',\n  '- NEVER add a bullet, a project, or a skill line. You may only rewrite or remove.',\n  '- Keep each bullet to at most 2 lines of rendered text. Shorten long ones.',\n  '- To make room, cut from Projects and older Work Experience bullets first.',\n  '  Never cut or shorten the Education section.',\n  '- Do NOT try to fit content by changing font sizes, \\\\vspace values, margins,',\n  '  \\\\addtolength, geometry, or any spacing parameter. Fit by cutting words only.',\n  '',\n  'LATEX CORRECTNESS',\n  '- Escape these in text: % as \\\\%, $ as \\\\$, & as \\\\&, # as \\\\#, _ as \\\\_',\n  '- Never write a bare < or > in text mode; they render as garbage with T1 encoding.',\n  '  Use $<$ and $>$, or \\\\textless and \\\\textgreater. Use $\\\\geq$ and $\\\\leq$.',\n  '- Use -- (double hyphen) for date and number ranges, not a single hyphen.',\n  '- Keep using \\\\textasciitilde{} for ~, \\\\textemdash{} for em dash, \\\\textendash{} for en dash,',\n  '  exactly as the source does. Never paste a raw Unicode dash or tilde character.',\n  '- Every { must be closed. Every \\\\begin must have a matching \\\\end.',\n  '',\n  'ATS SAFETY',\n  '- Keep it single-column plain text. No tables, no images, no TikZ, no multi-column layout.',\n  '- Keep the existing section headings. Do not rename them to creative alternatives.',\n]\n  // Account-level rules live in Config, not in this node, so they can be\n  // changed without editing code.\n  .concat(String(cfg.resumeConstraints || '').trim()\n    ? ['', 'ACCOUNT RULES'].concat(\n        String(cfg.resumeConstraints).split('\\n').map(s => s.trim()).filter(Boolean)\n          .map(s => '- ' + s.replace(/^-\\s*/, '')))\n    : [])\n  // A PDF upload has no layout to preserve: the house template IS the\n  // structure, and the extracted text is the only source of facts.\n  .concat(job.layout === 'house-template' ? [\n    '',\n    'THIS REQUEST IS A PDF IMPORT',\n    '- The LaTeX below is a TEMPLATE belonging to someone else. Keep its preamble,',\n    '  commands and section structure, and replace every piece of content with the',\n    '  facts from the EXTRACTED RESUME TEXT.',\n    '- The extracted text is the ONLY source of facts. Carry across nothing from the',\n    '  template body: no names, no employers, no projects, no metrics, no education.',\n    '- PDF extraction mangles spacing and bullet order. Reconstruct sensibly, but never',\n    '  invent a fact to fill a gap. If the text has no Summary, write one only from what',\n    '  the text itself states.',\n  ] : [])\n  .join('\\n');\n\nconst user = [\n  'JOB TITLE: ' + (job.title || 'n/a'),\n  'COMPANY: ' + (job.company || 'n/a'),\n  '',\n  'JOB DESCRIPTION:',\n  job.description || '(none provided)',\n  '',\n  'JOB SKILLS:',\n  job.skills || '(none provided)',\n  '',\n  '--- CURRENT RESUME (LaTeX) ---',\n  job.baseLatex,\n  '--- END RESUME ---',\n  ...(job.layout === 'house-template'\n    ? ['', '--- EXTRACTED RESUME TEXT (the only facts you may use) ---',\n       job.extractedFacts, '--- END EXTRACTED TEXT ---']\n    : []),\n  '',\n  'Rewrite the resume LaTeX so it targets the role above. Output the full LaTeX document only.',\n].join('\\n');\n\nreturn [{\n  json: {\n    ...job,\n    payload: {\n      model: cfg.model || 'auto',\n      messages: [\n        { role: 'system', content: system },\n        { role: 'user', content: user },\n      ],\n    },\n  },\n}];"
+      },
+      "id": "e34077d4-b6cf-57b0-ad4a-7bd48f528dea",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3910,
+        0
+      ],
+      "notes": "The tailoring prompt. The one-page budget and the LaTeX-correctness rules are what keep the compile loop from being needed; account-level rules come from Config.resumeConstraints."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.llmUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "response": {
+            "response": {}
+          },
+          "timeout": 180000
+        }
+      },
+      "id": "b451e0f8-b488-5f57-ac9c-3095ba177f25",
+      "name": "Tailor Resume (LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4120,
+        0
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "RRZrp29eY8TQ576L",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const job = $('Build Prompt').first().json;\nconst res = $input.first().json;\n\nlet text =\n  (res && res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content)\n  || '';\n\ntext = String(text).trim();\n\n// Strip ```latex ... ``` fences if the model added them anyway.\ntext = text.replace(/^```(?:latex|tex)?\\s*/i, '').replace(/```\\s*$/, '').trim();\n\n// Normalise Windows line endings ONLY.\n// Never touch backslash sequences: \\n, \\t, \\r are the opening characters of\n// real LaTeX commands (\\newcommand, \\textbf, \\tiny, \\tabcolsep, \\raggedright...).\ntext = text.replace(/\\r\\n/g, '\\n');\n\nif (!text.includes('\\\\documentclass')) {\n  throw new Error('Model did not return a full LaTeX document for job ' + job.jobId + '. Got: ' + text.slice(0, 200));\n}\n\nconst { payload, baseLatex, extractedFacts, ...row } = job;\n\nreturn [{\n  json: {\n    ...row,\n    latex: text,\n    // companyFolderName / roleFolderName / filename were all settled by Intake\n    // Normalise before the folders were created, so they are inherited as-is.\n    companyFolderId: $('Company Folder').first().json.companyFolderId,\n    roleFolderId: $('Role Folder').first().json.roleFolderId,\n  },\n}];"
+      },
+      "id": "351e141f-cbf4-5689-a136-e38ae1836ff9",
+      "name": "Clean LaTeX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4330,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Entry point of the compile loop. Carries the job, the LaTeX and the attempt\n// counter; the loop re-enters Compile PDF with this same shape.\nconst job = $('Clean LaTeX').first().json;\nconst companyFolderId = $('Company Folder').first().json.companyFolderId || '';\nconst roleFolderId = $('Role Folder').first().json.roleFolderId || '';\n\n// Everything goes into <company>/<role>/ so two roles at one company\n// cannot collide on SanatTudu.pdf. An unresolved folder id would NOT fail the\n// upload - Drive would quietly drop the files into My Drive root instead.\nif (!roleFolderId) {\n  throw new Error('No role folder id for job ' + job.jobId + ' (company folder ' +\n    (companyFolderId || 'unknown') + '). Refusing to upload to the Drive root.');\n}\n\nreturn [{ json: {\n  ...job,\n  companyFolderId,\n  roleFolderId,\n  attempt: 1,\n  compileLog: '',\n}}];\n"
+      },
+      "id": "9dba0cbb-a2fd-5934-8f71-c29a8c518232",
+      "name": "Compile Attempt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4540,
+        0
+      ],
+      "notes": "Entry point of the compile loop. Refuses to run without a role folder id: Drive would silently drop the files in My Drive root instead of failing."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Both the first attempt and every retry pass through here, so this node's run\n// index always matches Compile PDF's. That makes $('Compile Input').first() the\n// item that was actually compiled - the HTTP node's own output is just headers\n// and a binary, and carries none of the row.\nreturn $input.all();\n"
+      },
+      "id": "232768cd-457e-5ec3-aeb2-b56c58e7dc01",
+      "name": "Compile Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4750,
+        0
+      ],
+      "notes": "Both the first attempt and every retry pass through here, so this node's run index always matches Compile PDF's."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.compileUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config').first().json.compileToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ tex: $json.latex, name: $json.filename }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 130000
+        }
+      },
+      "id": "6b516d72-97e9-5a3c-8194-5243b3bb228e",
+      "name": "Compile PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4960,
+        0
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "Self-hosted LaTeX service (latex-pdf/docker-compose.yml). 200 returns the PDF, 422 returns {error,log}. neverError is what lets the 422 be read instead of killing the row."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-compile-ok",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "82728725-b11c-5fd3-b9c2-16781ad6039e",
+      "name": "Compile OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5170,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The single source of truth after the compile loop. Everything downstream must\n// read from HERE, not from Clean LaTeX: on a retry Clean LaTeX still holds the\n// FIRST, broken attempt while the PDF came from the fixed LaTeX.\nconst item = $input.first();\nconst compiled = $('Compile Input').first().json;\nconst bytes = Number((item.json && item.json.headers && item.json.headers['content-length']) || 0);\n\nconsole.log('job ' + compiled.jobId + ': compiled on attempt ' + (compiled.attempt || 1) +\n  (bytes ? ' (' + bytes + ' bytes)' : ''));\n\nreturn [{\n  json: {\n    ...compiled,\n    pdfBytes: bytes,\n    pdfName: $('Config').first().json.pdfName,\n  },\n  binary: item.binary,\n}];\n"
+      },
+      "id": "624d4c7a-6222-5ec1-95a5-457a61996111",
+      "name": "Compiled Resume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5380,
+        0
+      ],
+      "notes": "The single source of truth after the loop. Downstream must read HERE, not Clean LaTeX: on a retry Clean LaTeX still holds the first, broken attempt."
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Config').first().json.pdfName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Compiled Resume').first().json.roleFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "d017f3e3-3ad5-5bd9-b637-a0f97b8f251c",
+      "name": "Upload PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        5590,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// The Drive upload replaced our item with file metadata and consumed the PDF\n// binary, so re-emit the row before LaTeX to File builds the .tex binary.\nconst job = $('Compiled Resume').first().json;\nconst uploaded = $input.first().json || {};\n\nreturn [{ json: {\n  ...job,\n  pdfFileId: uploaded.id || '',\n  pdfWebViewLink: uploaded.webViewLink || '',\n}}];\n"
+      },
+      "id": "1257db6e-f1fd-5d54-a3c4-5f9c030b5174",
+      "name": "Resume Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "latex",
+        "options": {
+          "encoding": "utf8",
+          "fileName": "={{ $json.filename }}"
+        }
+      },
+      "id": "d078568e-ef43-5020-b9a2-57bbf2c99275",
+      "name": "LaTeX to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        6010,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Resume Files').first().json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Compiled Resume').first().json.roleFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "b3bc605e-04b1-5f57-9ba6-d51ce745d913",
+      "name": "Upload Tex",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        6220,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// The compiler returned a non-200. responseFormat is 'file', so even the JSON\n// error body arrives as a binary - decode it here, once, so both the retry\n// branch and the give-up branch have the real log.\n//\n// Two ways in, because which one works depends on n8n's binary data mode:\n// inline base64 (the default) or a file on disk / S3.\nconst item = $input.first();\nconst job = $('Compile Input').first().json;\n\nlet raw = '';\ntry {\n  const b = item.binary && item.binary.data;\n  if (b && b.data) raw = Buffer.from(b.data, 'base64').toString('utf8');\n} catch (e) { /* fall through */ }\n\nif (!raw) {\n  try {\n    const buf = await this.helpers.getBinaryDataBuffer(0, 'data');\n    raw = buf.toString('utf8');\n  } catch (e) { /* fall through */ }\n}\n\nif (!raw && item.json && typeof item.json.body === 'string') raw = item.json.body;\n\nlet detail = { error: '', log: '' };\ntry { detail = JSON.parse(raw); }\ncatch (e) {\n  detail.error = 'compile request failed';\n  detail.log = raw ? raw.slice(0, 2000)\n    : 'no response body (HTTP ' + ((item.json && item.json.statusCode) || '?') + ')';\n}\n\n// latexmk prints what matters as 'file.tex:LINE: message' or '! message'. The\n// rest of the log is font loading noise, so those lines come first.\nconst lines = String(detail.log || '').split('\\n');\nconst errors = lines.filter(l => /\\.tex:\\d+:|^!/.test(l));\nconst excerpt = (errors.length ? errors : lines.slice(-40)).join('\\n').slice(0, 4000);\n\nconst attempt = job.attempt || 1;\nconsole.log('job ' + job.jobId + ': compile attempt ' + attempt + ' failed (HTTP ' +\n  ((item.json && item.json.statusCode) || '?') + ')\\n' + excerpt);\n\nreturn [{ json: {\n  ...job,\n  attempt,\n  compileStatus: (item.json && item.json.statusCode) || 0,\n  compileError: detail.error || 'compile failed',\n  compileLog: excerpt,\n}}];\n"
+      },
+      "id": "62e910c4-c5d8-5bcf-8848-84b22fcd8722",
+      "name": "Parse Compile Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5380,
+        150
+      ],
+      "notes": "Decodes the 422 body and keeps only the 'file.tex:LINE:' lines. Runs before the retry decision so the give-up branch has the log too."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-retries-left",
+              "leftValue": "={{ $json.attempt || 1 }}",
+              "rightValue": "={{ $('Config').first().json.maxCompileRetries + 1 }}",
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "3d104ad1-c048-5088-8b7f-41ff02927ff1",
+      "name": "Retries Left?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5590,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The compiler rejected the LaTeX. Hand the model its own broken document plus\n// the real error log and ask for a minimal repair - not a rewrite.\nconst cfg = $('Config').first().json;\nconst job = $input.first().json;\n\nconst system = [\n  'You fix LaTeX that failed to compile. You are given a document and the compiler log.',\n  '',\n  'OUTPUT FORMAT',\n  '- Output ONLY the corrected, complete LaTeX document.',\n  '- Start at \\\\documentclass and end at \\\\end{document}. No fences, no commentary.',\n  '',\n  'RULES',\n  '- Fix ONLY what the log complains about. Change nothing else.',\n  '- Do NOT rewrite, reword, shorten or restructure the content.',\n  '- Do NOT add packages unless the log proves one is missing. The compiler has a',\n  '  limited package set, so prefer removing or replacing an undefined command',\n  '  over pulling in a new \\\\usepackage.',\n  '- \"Undefined control sequence\" means a command was invented. Replace it with',\n  '  plain text or with a command the document already defines.',\n  '- Escape % $ & # _ in text. Never leave a bare < or >.',\n  '- Every { must close; every \\\\begin must have its \\\\end.',\n  '- The document must still fit on one page.',\n].join('\\n');\n\nconst user = [\n  'COMPILER ERROR: ' + (job.compileError || 'compile failed'),\n  '',\n  '--- LOG ---',\n  job.compileLog || '(no log returned)',\n  '--- END LOG ---',\n  '',\n  '--- LATEX THAT FAILED ---',\n  job.latex,\n  '--- END LATEX ---',\n  '',\n  'Return the corrected full LaTeX document only.',\n].join('\\n');\n\nreturn [{ json: {\n  ...job,\n  fixPayload: {\n    model: cfg.model || 'auto',\n    messages: [\n      { role: 'system', content: system },\n      { role: 'user', content: user },\n    ],\n  },\n}}];\n"
+      },
+      "id": "ae8c6fa4-7ef6-5ed9-b834-13152d7489d9",
+      "name": "Build Fix Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5800,
+        150
+      ],
+      "notes": "Minimal-repair prompt built from the decoded compiler log."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.llmUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.fixPayload) }}",
+        "options": {
+          "response": {
+            "response": {}
+          },
+          "timeout": 180000
+        }
+      },
+      "id": "507db327-afe2-574b-9f89-a43498ff7d86",
+      "name": "Fix LaTeX (LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6010,
+        150
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "RRZrp29eY8TQ576L",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Same cleaning as Clean LaTeX, but the filename is PRESERVED rather than\n// recomputed - a retry must not rename the file.\nconst job = $('Build Fix Prompt').first().json;\nconst res = $input.first().json;\n\nlet text =\n  (res && res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content)\n  || '';\n\ntext = String(text).trim();\ntext = text.replace(/^```(?:latex|tex)?\\s*/i, '').replace(/```\\s*$/, '').trim();\ntext = text.replace(/\\r\\n/g, '\\n');\n\nif (!text.includes('\\\\documentclass')) {\n  throw new Error('Fix attempt returned no LaTeX document for job ' + job.jobId +\n    '. Got: ' + text.slice(0, 200));\n}\n\nconst attempt = (job.attempt || 1) + 1;\nconsole.log('job ' + job.jobId + ': retrying compile, attempt ' + attempt);\n\nreturn [{ json: { ...job, latex: text, attempt } }];\n"
+      },
+      "id": "08a2c1be-8405-5e50-8aca-aad5f3311b60",
+      "name": "Clean Fixed LaTeX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6220,
+        150
+      ],
+      "notes": "Loops back into Compile Input with attempt+1. The filename is preserved, never recomputed."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Out of attempts. The failure is recorded in status.json so the app's next\n// poll turns the job red with a readable reason, instead of it hanging on\n// 'running' forever.\nconst job = $input.first().json;\nconst attempts = ($('Config').first().json.maxCompileRetries || 0) + 1;\n\nconst first = String(job.compileLog || '').split('\\n')[0] || job.compileError || 'compile failed';\nconsole.log('job ' + job.jobId + ': giving up after ' + attempts + ' compile attempts - ' + first);\n\nreturn [{ json: {\n  ...job,\n  compileFailed: true,\n  statusContent: JSON.stringify({\n    status: 'failed',\n    jobId: job.jobId,\n    company: job.company,\n    title: job.title,\n    folderId: job.roleFolderId,\n    folderUrl: 'https://drive.google.com/drive/folders/' + job.roleFolderId,\n    compileAttempts: attempts,\n    finishedAt: new Date().toISOString(),\n    error: 'LaTeX compile failed after ' + attempts + ' attempts: ' + first.slice(0, 300),\n    files: ['jd.txt'],\n  }, null, 2),\n}}];\n"
+      },
+      "id": "c4b6f3bc-eb88-5978-a05e-fd30b3f99258",
+      "name": "Error: Compile Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://www.googleapis.com/upload/drive/v3/files/{{ $('Upload Status Running').first().json.id }}?uploadType=media&supportsAllDrives=true",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.statusContent }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "1be81f68-beed-521a-a088-6e4a02fdd397",
+      "name": "Status Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6010,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      },
+      "notes": "Overwrites status.json in place (media upload on the existing file id), so the folder never collects duplicate markers."
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst job = $('Compiled Resume').first().json;\n\nconst system = [\n  'You are an expert career writer who drafts concise, specific cover letters.',\n  '',\n  'OUTPUT FORMAT',\n  '- Output ONLY the body paragraphs of the cover letter, as plain text.',\n  '- Separate paragraphs with one blank line. No markdown, no **bold**, no bullet points,',\n  '  no HTML tags, no code fences, no commentary before or after.',\n  '- Do NOT write a greeting, a date, an address block, a subject line or a sign-off.',\n  '  Those are added around your text automatically. Start with the first body sentence.',\n  '',\n  'CONTENT RULES',\n  '- 4 short paragraphs, 280-350 words total. It must read in under a minute.',\n  '- Paragraph 1: the role and company by name, and one sentence on why this role fits.',\n  '- Paragraph 2: the two most relevant proof points from the resume, with their real numbers.',\n  '- Paragraph 3: one specific thing from the job description you would own on day one.',\n  '- Paragraph 4: a short, plain closing with a call to talk.',\n  '',\n  'HONESTY',\n  '- Use only facts present in the resume. Never invent employers, dates, numbers or degrees.',\n  '- Never change a metric or a date range.',\n  '- Mirror the job description vocabulary only where it is factually honest.',\n  '',\n  'TONE',\n  '- Direct and human. No \"I am writing to express my interest\", no \"esteemed organisation\",',\n  '  no flattery, no buzzword stacking. Never use an em dash.',\n].join('\\n');\n\nconst user = [\n  'JOB TITLE: ' + (job.title || 'n/a'),\n  'COMPANY: ' + (job.company || 'n/a'),\n  'DEPARTMENT: ' + (job.department || 'n/a'),\n  '',\n  'JOB DESCRIPTION:',\n  job.description || '(none provided)',\n  '',\n  '--- TAILORED RESUME (LaTeX, source of truth for every fact) ---',\n  job.latex,\n  '--- END RESUME ---',\n  '',\n  'Write the cover letter body as plain text paragraphs.',\n].join('\\n');\n\nreturn [{\n  json: {\n    ...job,\n    coverPayload: {\n      model: cfg.model || 'auto',\n      messages: [\n        { role: 'system', content: system },\n        { role: 'user', content: user },\n      ],\n    },\n  },\n}];\n"
+      },
+      "id": "07f23acc-aaf4-553b-9478-216a2f4c63f3",
+      "name": "Build Cover Letter Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6430,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.llmUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.coverPayload) }}",
+        "options": {
+          "response": {
+            "response": {}
+          },
+          "timeout": 180000
+        }
+      },
+      "id": "356fc938-35be-5327-8b95-7b0d1bcf160d",
+      "name": "Cover Letter (LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6640,
+        0
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "RRZrp29eY8TQ576L",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const job = $('Build Cover Letter Prompt').first().json;\nconst res = $input.first().json;\n\nlet body =\n  (res && res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content)\n  || '';\n\nbody = String(body).trim();\n\n// Strip fences / stray markdown the model may add despite the instruction.\nbody = body.replace(/^```[a-z]*\\s*/i, '').replace(/```\\s*$/, '').trim();\nbody = body.replace(/\\*\\*(.+?)\\*\\*/g, '$1').replace(/\\r\\n/g, '\\n');\n\nif (!body) {\n  throw new Error('Model returned an empty cover letter for job ' + job.jobId);\n}\n\n// Drop a greeting or sign-off if the model added one anyway - the DOCX builder\n// writes those itself, so a duplicate would look broken.\nlet paragraphs = body\n  .split(/\\n{2,}/)\n  .map(s => s.replace(/\\n/g, ' ').replace(/\\s+/g, ' ').trim())\n  .filter(Boolean)\n  .filter(s => !/^(dear\\b|hi\\b|hello\\b|to whom)/i.test(s))\n  .filter(s => !/^(sincerely|regards|best regards|yours (sincerely|faithfully)|thank you,)\\s*[,.]?$/i.test(s))\n  .filter(s => !/^(sanat tudu)$/i.test(s));\n\nif (!paragraphs.length) {\n  throw new Error('Cover letter had no usable paragraphs for job ' + job.jobId);\n}\n\nconst base = job.filename.replace(/^resume-/, 'cover-letter-').replace(/\\.tex$/, '');\n\nreturn [{\n  json: {\n    ...job,\n    coverParagraphs: paragraphs,\n    coverFilename: base + '.docx',\n  },\n}];\n"
+      },
+      "id": "555c7fb6-f36a-5072-a608-8c1c5f7c2d27",
+      "name": "Clean Cover Letter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6850,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Builds a real .docx with no external library.\n// A .docx is just a ZIP of XML parts, and a ZIP entry may be STORED (no\n// compression), which is the one method we can write in plain JS.\nconst job = $('Clean Cover Letter').first().json;\n\nconst esc = (s) => String(s)\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;');\n\n// ---------- document.xml ----------\n// sz is half-points (22 = 11pt); spacing/indents are twips (1440 = 1 inch).\nfunction para(text, opts) {\n  const o = opts || {};\n  const runProps =\n    '<w:rPr>' +\n    (o.bold ? '<w:b/>' : '') +\n    '<w:sz w:val=\"' + (o.size || 22) + '\"/>' +\n    '<w:szCs w:val=\"' + (o.size || 22) + '\"/>' +\n    (o.color ? '<w:color w:val=\"' + o.color + '\"/>' : '') +\n    '</w:rPr>';\n  const lines = String(text).split('\\n');\n  const runs = lines.map((line, i) =>\n    (i ? '<w:r>' + runProps + '<w:br/></w:r>' : '') +\n    '<w:r>' + runProps + '<w:t xml:space=\"preserve\">' + esc(line) + '</w:t></w:r>'\n  ).join('');\n  return '<w:p><w:pPr><w:spacing w:after=\"' + (o.after === undefined ? 160 : o.after) +\n    '\" w:line=\"276\" w:lineRule=\"auto\"/>' +\n    (o.align ? '<w:jc w:val=\"' + o.align + '\"/>' : '') +\n    '</w:pPr>' + runs + '</w:p>';\n}\n\nconst today = new Date().toLocaleDateString('en-GB', {\n  day: 'numeric', month: 'long', year: 'numeric',\n});\n\nconst bodyXml = [\n  para('Sanat Tudu', { bold: true, size: 32, after: 40 }),\n  para('Software Engineer | +91 9836787369 | sanat.tudu.tech@gmail.com', { size: 18, after: 0 }),\n  para('github.com/sanat-01 | linkedin.com/in/sanattudu | sanattudu.tech', { size: 18, after: 240 }),\n  para(today, { after: 240 }),\n  para('Hiring Team\\n' + (job.company || 'Hiring Team'), { after: 240 }),\n  para('Re: ' + (job.title || 'Software Engineer'), { bold: true }),\n  para('Dear Hiring Team,'),\n  ...job.coverParagraphs.map(t => para(t)),\n  para('Regards,', { after: 40 }),\n  para('Sanat Tudu', { bold: true }),\n].join('');\n\nconst documentXml =\n  '<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>' +\n  '<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">' +\n  '<w:body>' + bodyXml +\n  '<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/>' +\n  '<w:pgMar w:top=\"1440\" w:right=\"1440\" w:bottom=\"1440\" w:left=\"1440\" w:header=\"720\" w:footer=\"720\" w:gutter=\"0\"/>' +\n  '</w:sectPr></w:body></w:document>';\n\nconst stylesXml =\n  '<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>' +\n  '<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">' +\n  '<w:docDefaults><w:rPrDefault><w:rPr>' +\n  '<w:rFonts w:ascii=\"Calibri\" w:hAnsi=\"Calibri\" w:cs=\"Calibri\"/>' +\n  '<w:sz w:val=\"22\"/><w:szCs w:val=\"22\"/>' +\n  '</w:rPr></w:rPrDefault></w:docDefaults>' +\n  '<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\">' +\n  '<w:name w:val=\"Normal\"/><w:qFormat/></w:style>' +\n  '</w:styles>';\n\nconst contentTypes =\n  '<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>' +\n  '<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">' +\n  '<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>' +\n  '<Default Extension=\"xml\" ContentType=\"application/xml\"/>' +\n  '<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>' +\n  '<Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/>' +\n  '</Types>';\n\nconst rootRels =\n  '<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>' +\n  '<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">' +\n  '<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>' +\n  '</Relationships>';\n\nconst docRels =\n  '<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>' +\n  '<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">' +\n  '<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>' +\n  '</Relationships>';\n\n// ---------- minimal STORED-only ZIP writer ----------\nconst CRC_TABLE = (() => {\n  const t = new Int32Array(256);\n  for (let n = 0; n < 256; n++) {\n    let c = n;\n    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;\n    t[n] = c;\n  }\n  return t;\n})();\n\nfunction crc32(buf) {\n  let c = -1;\n  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);\n  return (c ^ -1) >>> 0;\n}\n\nfunction zip(entries) {\n  const locals = [];\n  const central = [];\n  let offset = 0;\n\n  for (const [name, text] of entries) {\n    const nameBuf = Buffer.from(name, 'utf8');\n    const data = Buffer.from(text, 'utf8');\n    const crc = crc32(data);\n\n    const lfh = Buffer.alloc(30);\n    lfh.writeUInt32LE(0x04034b50, 0);   // local file header signature\n    lfh.writeUInt16LE(20, 4);           // version needed\n    lfh.writeUInt16LE(0, 6);            // flags\n    lfh.writeUInt16LE(0, 8);            // method 0 = stored\n    lfh.writeUInt16LE(0, 10);           // mod time\n    lfh.writeUInt16LE(0x2821, 12);      // mod date (2000-01-01)\n    lfh.writeUInt32LE(crc, 14);\n    lfh.writeUInt32LE(data.length, 18); // compressed size\n    lfh.writeUInt32LE(data.length, 22); // uncompressed size\n    lfh.writeUInt16LE(nameBuf.length, 26);\n    lfh.writeUInt16LE(0, 28);           // extra length\n    locals.push(lfh, nameBuf, data);\n\n    const cdh = Buffer.alloc(46);\n    cdh.writeUInt32LE(0x02014b50, 0);   // central directory signature\n    cdh.writeUInt16LE(20, 4);           // version made by\n    cdh.writeUInt16LE(20, 6);           // version needed\n    cdh.writeUInt16LE(0, 8);\n    cdh.writeUInt16LE(0, 10);\n    cdh.writeUInt16LE(0, 12);\n    cdh.writeUInt16LE(0x2821, 14);\n    cdh.writeUInt32LE(crc, 16);\n    cdh.writeUInt32LE(data.length, 20);\n    cdh.writeUInt32LE(data.length, 24);\n    cdh.writeUInt16LE(nameBuf.length, 28);\n    cdh.writeUInt16LE(0, 30);\n    cdh.writeUInt16LE(0, 32);\n    cdh.writeUInt16LE(0, 34);\n    cdh.writeUInt16LE(0, 36);\n    cdh.writeUInt32LE(0, 38);\n    cdh.writeUInt32LE(offset, 42);      // offset of local header\n    central.push(cdh, nameBuf);\n\n    offset += lfh.length + nameBuf.length + data.length;\n  }\n\n  const centralBuf = Buffer.concat(central);\n  const eocd = Buffer.alloc(22);\n  eocd.writeUInt32LE(0x06054b50, 0);    // end of central directory\n  eocd.writeUInt16LE(0, 4);\n  eocd.writeUInt16LE(0, 6);\n  eocd.writeUInt16LE(entries.length, 8);\n  eocd.writeUInt16LE(entries.length, 10);\n  eocd.writeUInt32LE(centralBuf.length, 12);\n  eocd.writeUInt32LE(offset, 16);\n  eocd.writeUInt16LE(0, 20);\n\n  return Buffer.concat([Buffer.concat(locals), centralBuf, eocd]);\n}\n\n// [Content_Types].xml must be the first entry in the archive.\nconst buffer = zip([\n  ['[Content_Types].xml', contentTypes],\n  ['_rels/.rels', rootRels],\n  ['word/document.xml', documentXml],\n  ['word/_rels/document.xml.rels', docRels],\n  ['word/styles.xml', stylesXml],\n]);\n\nconst binary = await this.helpers.prepareBinaryData(\n  buffer,\n  job.coverFilename,\n  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'\n);\n\nreturn [{\n  json: {\n    ...job,\n    companyFolderId: $('Company Folder').first().json.companyFolderId,\n    roleFolderId: $('Compiled Resume').first().json.roleFolderId,\n    docxBytes: buffer.length,\n  },\n  binary: { data: binary },\n}];\n"
+      },
+      "id": "dcef2934-cbb7-5a32-b7e8-928f31d0a4e8",
+      "name": "Build Cover Letter DOCX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7060,
+        0
+      ],
+      "notes": "Writes a real .docx (OOXML in a STORED-only zip) with no npm dependency. Edit the para() calls to change fonts, sizes or spacing."
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Clean Cover Letter').first().json.coverFilename }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Role Folder').first().json.roleFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "2d8b1ab1-d4b5-556c-9749-c9cdf1a9b227",
+      "name": "Upload Cover DOCX",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        7270,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      },
+      "notes": "Uploads the .docx as-is into the per-company subfolder. Set 'Convert to Google Document' in options if you also want an editable Google Doc."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Renders the same paragraphs the .docx uses as a LaTeX letter, so the folder\n// holds a PDF cover letter too. Deliberately a bare article: nothing here can\n// fail to compile the way a tailored resume can, so there is no fix loop.\nconst cfg = $('Config').first().json;\nconst job = $('Clean Cover Letter').first().json;\n\n// Every LaTeX special character, plus the two that render as garbage under T1.\nconst esc = (s) => String(s)\n  .replace(/\\\\/g, '\\\\textbackslash{}')\n  .replace(/([&%$#_{}])/g, '\\\\$1')\n  .replace(/~/g, '\\\\textasciitilde{}')\n  .replace(/\\^/g, '\\\\textasciicircum{}')\n  .replace(/</g, '$<$')\n  .replace(/>/g, '$>$')\n  .replace(/\u2014/g, '\\\\textemdash{}')\n  .replace(/\u2013/g, '\\\\textendash{}')\n  .replace(/[\u2018\u2019]/g, \"'\")\n  .replace(/[\u201c\u201d]/g, '\"');\n\nconst today = new Date().toLocaleDateString('en-GB', {\n  day: 'numeric', month: 'long', year: 'numeric',\n});\n\nconst tex = [\n  '\\\\documentclass[a4paper,11pt]{article}',\n  '\\\\usepackage[T1]{fontenc}',\n  '\\\\usepackage[margin=1in]{geometry}',\n  '\\\\usepackage[hidelinks]{hyperref}',\n  '\\\\setlength{\\\\parindent}{0pt}',\n  '\\\\setlength{\\\\parskip}{10pt}',\n  '\\\\pagestyle{empty}',\n  '\\\\begin{document}',\n  '{\\\\large\\\\bfseries ' + esc(cfg.fullName) + '}\\\\\\\\[2pt]',\n  '{\\\\small ' + esc([cfg.phone, cfg.email, cfg.portfolio].filter(Boolean).join(' $|$ ')) + '}',\n  '',\n  esc(today),\n  '',\n  'Hiring Team\\\\\\\\',\n  esc(job.company || 'Hiring Team'),\n  '',\n  '\\\\textbf{Re: ' + esc(job.title || 'Software Engineer') + '}',\n  '',\n  'Dear Hiring Team,',\n  '',\n  ...job.coverParagraphs.map(p => esc(p) + '\\n'),\n  'Regards,\\\\\\\\',\n  esc(cfg.fullName),\n  '\\\\end{document}',\n].join('\\n');\n\nreturn [{ json: {\n  ...job,\n  coverTex: tex,\n  coverPdfName: (job.coverFilename || 'cover-letter.docx').replace(/\\.docx$/, '.pdf'),\n}}];\n"
+      },
+      "id": "1505acc6-8501-5a05-bcd2-11faff71c24d",
+      "name": "Build Cover Letter LaTeX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7480,
+        0
+      ],
+      "notes": "Same paragraphs, rendered as a bare article so the folder also holds a PDF cover letter."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.compileUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config').first().json.compileToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ tex: $json.coverTex, name: $json.coverPdfName }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 130000
+        }
+      },
+      "id": "bb7bb588-06ca-52b8-b182-1e3a27683532",
+      "name": "Compile Cover PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7690,
+        0
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "One attempt, no fix loop. A plain letter has little to break, and a cover-letter PDF failure must not sink a job whose resume already compiled."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-cover-pdf",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "b8d8cb01-7e0c-5aba-9b74-0faf65377d86",
+      "name": "Cover PDF OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        7900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Build Cover Letter LaTeX').first().json.coverPdfName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Role Folder').first().json.roleFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "a1b44e10-6748-528a-9b3f-c66ef685a2b5",
+      "name": "Upload Cover PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        8110,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flips status.json to done. This is the only thing the app is waiting for:\n// the artifacts are already in Drive, so \"done\" is a status change and\n// nothing is transferred back through the API.\nconst job = $('Resume Files').first().json;\nconst cover = $('Clean Cover Letter').first().json;\nconst coverPdfOk = $('Build Cover Letter LaTeX').first().json.coverPdfName &&\n  $('Compile Cover PDF').first().json.statusCode === 200;\n\nconst files = [\n  job.filename,\n  job.pdfName,\n  cover.coverFilename,\n  coverPdfOk ? cover.coverFilename.replace(/\\.docx$/, '.pdf') : null,\n  'jd.txt',\n].filter(Boolean);\n\nif (!coverPdfOk) {\n  console.log('job ' + job.jobId + ': cover letter PDF did not compile; the .docx is still there.');\n}\n\nconsole.log('job ' + job.jobId + ': done after ' + (job.attempt || 1) +\n  ' compile attempt(s) - ' + files.join(', '));\n\nreturn [{ json: {\n  ...job,\n  statusContent: JSON.stringify({\n    status: 'done',\n    jobId: job.jobId,\n    company: job.company,\n    title: job.title,\n    kind: job.kind,\n    layout: job.layout,\n    folderId: job.roleFolderId,\n    folderUrl: 'https://drive.google.com/drive/folders/' + job.roleFolderId,\n    compileAttempts: job.attempt || 1,\n    finishedAt: new Date().toISOString(),\n    files,\n  }, null, 2),\n}}];\n"
+      },
+      "id": "864c3b6d-7dd7-56d9-9f07-5e59911991d5",
+      "name": "Finish",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8110,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://www.googleapis.com/upload/drive/v3/files/{{ $('Upload Status Running').first().json.id }}?uploadType=media&supportsAllDrives=true",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.statusContent }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "bfa7967c-c1fa-5f1e-ad18-41185f702cbd",
+      "name": "Status Done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8320,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      },
+      "notes": "The app polls for exactly this. Nothing is transferred back: the artifacts stay in Drive."
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "resume/tailor/:folderId",
+        "responseMode": "responseNode",
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "id": "e4d28f71-e3e6-59cf-bb75-0bea096b3afb",
+      "name": "Status Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        1200
+      ],
+      "webhookId": "23305a93-88d7-5c3e-9641-8fd84dd3c03f",
+      "notes": "GET /webhook/resume/tailor/<folderId>. Same Header Auth credential as Intake. Answers from status.json in that folder, so it keeps working across n8n restarts and from any worker."
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=name = 'status.json' and '{{ $('Status Webhook').first().json.params.folderId }}' in parents and trashed = false"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name)"
+            },
+            {
+              "name": "supportsAllDrives",
+              "value": "true"
+            },
+            {
+              "name": "includeItemsFromAllDrives",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "61f65549-94ef-5dc0-9597-a4b6eec64156",
+      "name": "Find Status File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -290,
+        1200
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ ((($json.body && $json.body.files) || $json.files || [])[0] || {}).id }}?alt=media&supportsAllDrives=true",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "20e2c587-2b55-5c7d-a0c0-57770e7bd968",
+      "name": "Download Status File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        1200
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "BTrj47loN5LJMsIp",
+          "name": "Google Drive account 2"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "neverError + continueOnFail: a folder with no marker yet must read as 'running', not as an error."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reads the marker the generator wrote. The one rule that matters here: an\n// unreadable or missing marker is reported as RUNNING, never failed - the app\n// treats 'failed' as terminal and would burn the job row on a transient Drive\n// hiccup or on a poll that arrived a second too early.\nconst folderId = $('Status Webhook').first().json.params.folderId || '';\nconst res = $input.first().json || {};\n\nlet raw = '';\nif (typeof res.body === 'string') raw = res.body;\nelse if (res.body && typeof res.body === 'object') raw = JSON.stringify(res.body);\nelse if (typeof res.data === 'string') raw = res.data;\n\nlet marker = null;\ntry { marker = raw ? JSON.parse(raw) : null; } catch (e) { marker = null; }\n\nconst folderUrl = 'https://drive.google.com/drive/folders/' + folderId;\n\nif (!marker || !marker.status) {\n  return [{ json: { status: 'running', folderUrl, files: [] } }];\n}\n\nreturn [{ json: {\n  status: marker.status === 'failed' ? 'failed' : (marker.status === 'done' ? 'done' : 'running'),\n  folderUrl: marker.folderUrl || folderUrl,\n  files: marker.files || [],\n  error: marker.error || undefined,\n  compileAttempts: marker.compileAttempts,\n}}];\n"
+      },
+      "id": "2d9ee4fd-3d9e-5fb3-bbbf-c6cf0bbab4dd",
+      "name": "Status Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        130,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "3107fa83-86b5-5d3a-9c60-bc51accc214e",
+      "name": "Respond Status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        340,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Finds the uploaded .tex and .pdf whatever n8n decided to call them.\n//\n// A multipart file is NOT guaranteed to land in a binary property named after\n// its form field: depending on the n8n version it can arrive as 'tex'/'pdf' or\n// as 'file0'/'file1'. Hardcoding the field name made a perfectly good request\n// look like \"no text could be read\", so the slot is resolved from the data\n// instead: exact key first, then the filename, then the mime type.\nconst intake = $('Intake').first();\nconst binary = intake.binary || {};\nconst keys = Object.keys(binary);\n\nconst describe = (k) => {\n  const b = binary[k] || {};\n  return (b.fileName || '?') + ' [' + (b.mimeType || '?') + ']';\n};\n\nconst looksLike = (ext, mimes) => (k) => {\n  const b = binary[k] || {};\n  const name = String(b.fileName || '').toLowerCase();\n  const fileExt = String(b.fileExtension || '').toLowerCase();\n  const mime = String(b.mimeType || '').toLowerCase();\n  return fileExt === ext || name.endsWith('.' + ext) || mimes.includes(mime);\n};\n\nconst pick = (exact, ext, mimes, avoid) => {\n  if (keys.includes(exact) && binary[exact]) return exact;\n  const match = keys.find((k) => k !== avoid && looksLike(ext, mimes)(k));\n  return match || '';\n};\n\n// A .tex is often sent as application/octet-stream or text/plain, so the\n// extension is the reliable signal and the mime type is only a fallback.\nconst texKey = pick('tex', 'tex', ['application/x-tex', 'text/x-tex'], null);\nconst pdfKey = pick('pdf', 'pdf', ['application/pdf'], texKey);\n\nif (!texKey && !pdfKey) {\n  throw new Error(\n    'no .tex or .pdf file was attached. Binary properties received: ' +\n    (keys.length ? keys.map((k) => k + ' = ' + describe(k)).join(', ') : '(none)') +\n    '. Express sends them as the form fields \"tex\" and \"pdf\".');\n}\n\n// Re-emitted under stable names so the extract nodes can keep reading 'tex'\n// and 'pdf' regardless of what arrived.\nconst out = {};\nif (texKey) out.tex = binary[texKey];\nif (pdfKey) out.pdf = binary[pdfKey];\n\nif ((texKey && texKey !== 'tex') || (pdfKey && pdfKey !== 'pdf')) {\n  console.log('this n8n names multipart uploads differently: tex=' + (texKey || '-') +\n    ', pdf=' + (pdfKey || '-') + ' - remapped.');\n} else {\n  console.log('uploads: tex=' + (texKey || '-') + ', pdf=' + (pdfKey || '-'));\n}\n\nreturn [{\n  json: { ...$input.first().json, texKey, pdfKey, hasTex: Boolean(texKey) },\n  binary: out,\n}];\n"
+      },
+      "id": "5b603bd2-9cce-5f13-8f2b-7b33ecc71410",
+      "name": "Resolve Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        130,
+        0
+      ],
+      "notes": "Normalises the uploaded files to the binary names 'tex' and 'pdf', and fails with the list of what actually arrived rather than a misleading extraction error."
+    }
+  ],
+  "connections": {
+    "Intake": {
+      "main": [
+        [
+          {
+            "node": "Resume Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Source": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Resolve Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Tex?": {
+      "main": [
+        [
+          {
+            "node": "Extract Tex",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Tex": {
+      "main": [
+        [
+          {
+            "node": "Intake Normalise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF": {
+      "main": [
+        [
+          {
+            "node": "Intake Normalise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intake Normalise": {
+      "main": [
+        [
+          {
+            "node": "Find Company Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Company Folder": {
+      "main": [
+        [
+          {
+            "node": "Company Folder Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Folder Check": {
+      "main": [
+        [
+          {
+            "node": "Company Folder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Folder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Company Folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Company Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Company Folder": {
+      "main": [
+        [
+          {
+            "node": "Company Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Company Folder": {
+      "main": [
+        [
+          {
+            "node": "Find Role Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Role Folder": {
+      "main": [
+        [
+          {
+            "node": "Role Folder Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Role Folder Check": {
+      "main": [
+        [
+          {
+            "node": "Role Folder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Role Folder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Role Folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Role Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Role Folder": {
+      "main": [
+        [
+          {
+            "node": "Role Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Role Folder": {
+      "main": [
+        [
+          {
+            "node": "JD to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JD to File": {
+      "main": [
+        [
+          {
+            "node": "Upload JD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload JD": {
+      "main": [
+        [
+          {
+            "node": "Status Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Running": {
+      "main": [
+        [
+          {
+            "node": "Status File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status File": {
+      "main": [
+        [
+          {
+            "node": "Upload Status Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Status Running": {
+      "main": [
+        [
+          {
+            "node": "Respond Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Accepted": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Source PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Source PDF": {
+      "main": [
+        [
+          {
+            "node": "Upload Source PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Tailor Resume (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tailor Resume (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Clean LaTeX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean LaTeX": {
+      "main": [
+        [
+          {
+            "node": "Compile Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Attempt": {
+      "main": [
+        [
+          {
+            "node": "Compile Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Input": {
+      "main": [
+        [
+          {
+            "node": "Compile PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile PDF": {
+      "main": [
+        [
+          {
+            "node": "Compile OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile OK?": {
+      "main": [
+        [
+          {
+            "node": "Compiled Resume",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Compile Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compiled Resume": {
+      "main": [
+        [
+          {
+            "node": "Upload PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload PDF": {
+      "main": [
+        [
+          {
+            "node": "Resume Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Files": {
+      "main": [
+        [
+          {
+            "node": "LaTeX to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LaTeX to File": {
+      "main": [
+        [
+          {
+            "node": "Upload Tex",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Tex": {
+      "main": [
+        [
+          {
+            "node": "Build Cover Letter Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Compile Error": {
+      "main": [
+        [
+          {
+            "node": "Retries Left?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retries Left?": {
+      "main": [
+        [
+          {
+            "node": "Build Fix Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Compile Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Fix Prompt": {
+      "main": [
+        [
+          {
+            "node": "Fix LaTeX (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix LaTeX (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Clean Fixed LaTeX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Fixed LaTeX": {
+      "main": [
+        [
+          {
+            "node": "Compile Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error: Compile Failed": {
+      "main": [
+        [
+          {
+            "node": "Status Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cover Letter Prompt": {
+      "main": [
+        [
+          {
+            "node": "Cover Letter (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cover Letter (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Clean Cover Letter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Cover Letter": {
+      "main": [
+        [
+          {
+            "node": "Build Cover Letter DOCX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cover Letter DOCX": {
+      "main": [
+        [
+          {
+            "node": "Upload Cover DOCX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Cover DOCX": {
+      "main": [
+        [
+          {
+            "node": "Build Cover Letter LaTeX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cover Letter LaTeX": {
+      "main": [
+        [
+          {
+            "node": "Compile Cover PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Cover PDF": {
+      "main": [
+        [
+          {
+            "node": "Cover PDF OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cover PDF OK?": {
+      "main": [
+        [
+          {
+            "node": "Upload Cover PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Cover PDF": {
+      "main": [
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish": {
+      "main": [
+        [
+          {
+            "node": "Status Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Webhook": {
+      "main": [
+        [
+          {
+            "node": "Find Status File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Status File": {
+      "main": [
+        [
+          {
+            "node": "Download Status File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Status File": {
+      "main": [
+        [
+          {
+            "node": "Status Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Upload": {
+      "main": [
+        [
+          {
+            "node": "Has Tex?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "1807c36887424408e159f9644cd74b2e7b9bc2507295c11bc903e6b25beff1b2"
+  }
+}

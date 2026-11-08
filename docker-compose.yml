@@ -54,7 +54,9 @@ services:
       /bin/sh -c "
       until mc alias set local http://minio:9000 app apppassword; do sleep 1; done;
       mc mb --ignore-existing local/multi-purpose-uploads;
-      mc anonymous set download local/multi-purpose-uploads;
+      mc anonymous set none local/multi-purpose-uploads;
+      mc anonymous set download local/multi-purpose-uploads/avatars;
+      mc anonymous set download local/multi-purpose-uploads/portfolio;
       "
 
   # General-purpose event bus (APPROACH.md §22) — KRaft single-node, no

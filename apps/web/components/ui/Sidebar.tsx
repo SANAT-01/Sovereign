@@ -5,14 +5,15 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { SignOutButton } from "./SignOutButton";
 import {
-  HomeIcon,
-  WalletIcon,
-  NotesIcon,
-  TargetIcon,
   BriefcaseIcon,
-  UserIcon,
   ChatIcon,
   CloseIcon,
+  FileIcon,
+  HomeIcon,
+  NotesIcon,
+  TargetIcon,
+  UserIcon,
+  WalletIcon,
 } from "./icons";
 
 const navItems = [
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/progress", label: "Progress", icon: TargetIcon },
   { href: "/portfolio", label: "Portfolio", icon: BriefcaseIcon },
   { href: "/assistant", label: "Assistant", icon: ChatIcon },
+  { href: "/resume", label: "Resume", icon: FileIcon },
   { href: "/profile", label: "Profile", icon: UserIcon },
 ];
 

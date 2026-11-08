@@ -28,3 +28,52 @@ export async function uploadPublicFile(
   });
   return `${PUBLIC_URL_BASE}/${BUCKET}/${objectName}`;
 }
+
+// Private objects (APPROACH.md §8: "future modules needing private file
+// storage would use presigned URLs instead of a public policy"). A tailored
+// resume is personal data, so unlike an avatar it must never be public-read.
+// No bucket policy is involved: the object is simply never readable without a
+// signed URL, which is why the caller stores the OBJECT NAME and asks for a
+// fresh URL each time rather than persisting one.
+export async function uploadPrivateFile(
+  objectName: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<string> {
+  await minioClient.putObject(BUCKET, objectName, buffer, buffer.length, {
+    'Content-Type': contentType,
+  });
+  return objectName;
+}
+
+// Short-lived by design. Long enough to click a download, short enough that a
+// URL copied out of a browser history is useless later.
+const PRESIGNED_TTL_SECONDS = 15 * 60;
+
+export async function presignedGetUrl(
+  objectName: string,
+  downloadFileName?: string,
+): Promise<string> {
+  // Content-Disposition is set at sign time, so the browser saves
+  // "resume.pdf" rather than the opaque object key.
+  const reqParams = downloadFileName
+    ? { 'response-content-disposition': `attachment; filename="${downloadFileName.replace(/[^\w.-]/g, '_')}"` }
+    : undefined;
+  return minioClient.presignedGetObject(BUCKET, objectName, PRESIGNED_TTL_SECONDS, reqParams);
+}
+
+// Reads a private object back. Used when a stored base resume has to be sent
+// on to the generator: the bytes live in MinIO, not in the request, and the
+// generator only speaks multipart.
+export async function getFile(objectName: string): Promise<Buffer> {
+  const stream = await minioClient.getObject(BUCKET, objectName);
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+export async function removeFile(objectName: string): Promise<void> {
+  await minioClient.removeObject(BUCKET, objectName);
+}
